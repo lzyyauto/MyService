@@ -1,3 +1,4 @@
+from ast import If
 from datetime import datetime
 from typing import List
 
@@ -56,11 +57,51 @@ async def create_rest_record(
                                   wifi_name=rest_record_in.wifi_name,
                                   latitude=rest_record_in.latitude,
                                   longitude=rest_record_in.longitude,
+                                  city=rest_record_in.city,
                                   rest_time=int(now.timestamp()),
                                   month_str=now.strftime('%m月'))
     db.add(rest_record)
     db.commit()
     db.refresh(rest_record)
+
+    # --- 新增异步业务流程 ---
+    import asyncio
+
+    from app.core.config import settings
+    from app.core.services.bark_service import BarkService
+    from app.core.services.notion_service import NotionService
+
+    async def notion_and_bark_task():
+        notion_service = NotionService(token=settings.NOTION_TOKEN)
+        bark_service = BarkService(
+            base_url=settings.BARK_BASE_URL,
+            default_device_key=settings.BARK_DEFAULT_DEVICE_KEY)
+        retry_count = 0
+        max_retries = 3
+        while retry_count < max_retries:
+            try:
+                page_id = await notion_service.add_rest_record(
+                    database_id=settings.NOTION_WAKE_DATABASE_ID
+                    if rest_record_in.rest_type == 1 else
+                    settings.NOTION_SLEEP_DATABASE_ID,
+                    record=rest_record)
+                if not page_id:
+                    raise Exception("Notion提交失败")
+                break
+            except Exception as e:
+                retry_count += 1
+                if retry_count == max_retries:
+                    # 重试3次后仍失败，发 Bark 通知
+                    await bark_service.send_notification(
+                        title="Notion同步失败",
+                        content=f"休息记录同步失败（重试{max_retries}次）: {str(e)}")
+                else:
+                    # 重试间隔，例如 1 秒
+                    await asyncio.sleep(1)
+
+    asyncio.create_task(notion_and_bark_task())
+    # --- 业务流程结束 ---
+
     return rest_record
 
 

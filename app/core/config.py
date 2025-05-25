@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Optional
 
 from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings
@@ -10,8 +11,6 @@ class Settings(BaseSettings):
     APP_NAME: str
     DEBUG: bool
     ENVIRONMENT: str
-    APP_URL: str
-    APP_PORT: int
 
     # 数据库配置
     POSTGRES_USER: str
@@ -26,6 +25,16 @@ class Settings(BaseSettings):
 
     # Docker配置
     POSTGRES_DATA_DIR: str
+
+    # Notion 配置
+    NOTION_TOKEN: Optional[str] = None
+    NOTION_SLEEP_DATABASE_ID: Optional[str] = None
+    NOTION_WAKE_DATABASE_ID: Optional[str] = None
+    NOTION_GTD_DATABASE_ID: Optional[str] = None
+
+    # Bark 配置
+    BARK_BASE_URL: str = "https://api.day.app"
+    BARK_DEFAULT_DEVICE_KEY: Optional[str] = None
 
     @property
     def DATABASE_URL(self) -> str:
