@@ -2,25 +2,31 @@ version: '3.8'
 
 services:
   web:
-    build: .
+    image: lzyyauto/myservice:latest
+    container_name: Myservice
     ports:
-      - "${PORT}:8000"
+      - "${PORT:-8000}:8000"
     environment:
+      - PYTHONPATH=/app
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST=db
       - POSTGRES_PORT=${POSTGRES_PORT}
+      # 你可以加更多自定义环境变量
     depends_on:
       - db
     volumes:
-      - .:/app
+      - .:/app  # 只建议开发用，生产建议去掉
+    restart: unless-stopped
     command: >
       sh -c "python -c 'from app.db.init_db import init_db; init_db()' &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # 生产环境建议去掉 --reload
 
   db:
     image: postgres:15
+    container_name: Postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -28,7 +34,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
+    restart: unless-stopped
 
 volumes:
-  postgres_data: 
+  postgres_data:
