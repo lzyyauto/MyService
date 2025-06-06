@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Union
 
 from notion_client import Client
@@ -137,10 +137,17 @@ class NotionService:
         if "rest_time" not in record_dict:
             record_dict["rest_time"] = int(datetime.now().timestamp())
 
+        # rest_time = datetime.fromtimestamp(
+        #     record_dict["rest_time"]).isoformat()
+        # rest_date = datetime.fromtimestamp(
+        #     record_dict["rest_time"]).strftime("%Y-%m-%d")
+
         rest_time = datetime.fromtimestamp(
-            record_dict["rest_time"]).isoformat()
+            record_dict["rest_time"],
+            tz=timezone(timedelta(hours=8))).isoformat()
         rest_date = datetime.fromtimestamp(
-            record_dict["rest_time"]).strftime("%Y-%m-%d")
+            record_dict["rest_time"],
+            tz=timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
 
         # 构建属性数据（去掉 Notion 数据库中不存在的字段，比如"类型"）
         properties = {
