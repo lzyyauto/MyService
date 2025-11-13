@@ -1,15 +1,30 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import gtd, rest_records
+from app.api.v1.endpoints import gtd, rest_records, video_process
 from app.core.config import settings
 from app.db.init_db import init_db
 
 
+def setup_logging():
+    """配置日志系统"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
+    # 设置第三方库的日志级别，减少干扰
+    logging.getLogger('uvicorn.access').setLevel(logging.WARNING)
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 启动时初始化日志
+    setup_logging()
     # 启动时初始化数据库
     init_db()
     yield
@@ -38,6 +53,9 @@ app.openapi_tags = [{
 }, {
     "name": "任务管理",
     "description": "GTD任务管理",
+}, {
+    "name": "视频处理",
+    "description": "视频下载、音频提取、语音识别、AI总结",
 }]
 
 # 配置CORS
@@ -60,6 +78,12 @@ app.include_router(
     gtd.router,
     prefix="/api/v1/gtd-tasks",
     tags=["任务管理"],
+)
+
+app.include_router(
+    video_process.router,
+    prefix="/api/v1/video-process",
+    tags=["视频处理"],
 )
 
 

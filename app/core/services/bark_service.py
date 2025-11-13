@@ -115,13 +115,13 @@ class BarkService:
                                      status: int, priority: int) -> bool:
         """
         发送任务状态变更通知
-        
+
         Args:
             device_key: 设备 key
             task_name: 任务名称
             status: 任务状态
             priority: 任务优先级
-            
+
         Returns:
             发送是否成功
         """
@@ -137,3 +137,37 @@ class BarkService:
             level="active" if priority >= 8 else "timeSensitive",
             sound="bell",
             group="gtd_tasks")
+
+    async def send_video_process_complete_notification(
+        self,
+        device_key: str,
+        task_id: str,
+        video_summary: Optional[str] = None
+    ) -> bool:
+        """
+        发送视频处理完成通知
+
+        Args:
+            device_key: 设备 key
+            task_id: 任务ID
+            video_summary: 视频AI总结（可选）
+
+        Returns:
+            发送是否成功
+        """
+        title = "🎬 视频处理完成"
+        content = f"任务ID: {task_id}\n\n视频已处理完成，可查看AI总结"
+
+        # 如果有总结，添加到内容中
+        if video_summary:
+            # 截取前100个字符作为预览
+            preview = video_summary[:100] + "..." if len(video_summary) > 100 else video_summary
+            content += f"\n\n总结预览：\n{preview}"
+
+        return await self.send_notification(
+            title=title,
+            content=content,
+            device_key=device_key,
+            level="timeSensitive",
+            sound="bell",
+            group="video_process")

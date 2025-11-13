@@ -13,5 +13,13 @@ email-validator==2.1.0.post1
 pytest==8.2.0
 httpx==0.25.2
 notion-client==2.2.1
-aiohttp==3.8.6 
+aiohttp==3.8.6
+requests==2.31.0  # 同步HTTP请求
 pytest-asyncio==0.26.0
+
+# 新增依赖
+tenacity==8.2.3  # 重试机制
+aiofiles==23.2.1  # 异步文件操作
+
+# 测试相关依赖
+pytest-cov==4.1.0  # 测试覆盖率

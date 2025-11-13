@@ -36,6 +36,20 @@ class Settings(BaseSettings):
     BARK_BASE_URL: str = "https://api.day.app"
     BARK_DEFAULT_DEVICE_KEY: Optional[str] = None
 
+    # 视频处理配置
+    FFMPEG_PATH: str = "ffmpeg"  # ffmpeg可执行文件路径
+    VIDEO_PROCESSING_TEMP_DIR: str = "temp/video/"  # 视频处理临时目录
+
+    # 第三方抖音API服务配置
+    THIRD_PARTY_DOUYIN_API_URL: str = "http://localhost:8088/api/hybrid/video_data"  # 第三方抖音视频API服务地址
+
+    # AI服务配置
+    AI_PROVIDER: str = "siliconflow"  # AI服务提供商：siliconflow, openai
+    SILICONFLOW_API_KEY: Optional[str] = None  # 硅基AI API密钥
+    OPENAI_API_KEY: Optional[str] = None  # OpenAI API密钥
+    AI_VOICE_MODEL: str = "FunAudioLLM/SenseVoiceSmall"  # 语音识别模型（硅基AI推荐）
+    AI_SUMMARY_MODEL: str = "Qwen/QwQ-32B"  # 文本总结模型
+
     @property
     def DATABASE_URL(self) -> str:
         # 直接返回连接字符串，不使用 PostgresDsn
