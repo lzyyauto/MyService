@@ -1,0 +1,405 @@
+{
+  "code": 200,
+  "router": "/api/hybrid/video_data",
+  "data": {
+    "type": "image",
+    "platform": "douyin",
+    "video_id": "7571815302888002170",
+    "desc": "不干净的馒头店。关于一次温柔的拥抱\n#画一个故事 #原创漫画 #治愈系漫画 #piupa皮喔帕 #治愈系",
+    "create_time": 1762950632,
+    "author": {
+      "avatar_thumb": {
+        "height": 720,
+        "uri": "100x100/aweme-avatar/tos-cn-avt-0015_c4de4437f08c9fb73b27b988448d135f",
+        "url_list": [
+          "https://p3-pc.douyinpic.com/aweme/100x100/aweme-avatar/tos-cn-avt-0015_c4de4437f08c9fb73b27b988448d135f.jpeg?from=327834062"
+        ],
+        "width": 720
+      },
+      "awemehts_greet_info": "",
+      "cf_list": null,
+      "close_friend_type": 0,
+      "contacts_status": 1,
+      "contrail_list": null,
+      "cover_url": [
+        {
+          "height": 720,
+          "uri": "c8510002be9a3a61aad2",
+          "url_list": [
+            "https://p3-pc-sign.douyinpic.com/obj/c8510002be9a3a61aad2?lk3s=138a59ce&x-expires=1764241200&x-signature=gk%2FgvKaq4s9tq%2FgMu7enSTX%2B3JI%3D&from=327834062",
+            "https://p9-pc-sign.douyinpic.com/obj/c8510002be9a3a61aad2?lk3s=138a59ce&x-expires=1764241200&x-signature=jr1hE2qRRll2w90cAVo3qtKbZzE%3D&from=327834062"
+          ],
+          "width": 720
+        }
+      ],
+      "create_time": 0,
+      "custom_verify": "",
+      "data_label_list": null,
+      "endorsement_info_list": null,
+      "enterprise_verify_reason": "",
+      "favoriting_count": 130,
+      "follow_status": 0,
+      "follower_count": 25078,
+      "follower_list_secondary_information_struct": null,
+      "follower_status": 0,
+      "following_count": 0,
+      "im_role_ids": null,
+      "is_ad_fake": false,
+      "is_blocked_v2": false,
+      "is_blocking_v2": false,
+      "is_cf": 0,
+      "live_high_value": 0,
+      "mate_add_permission": 1,
+      "max_follower_count": 0,
+      "nickname": "PIUPA皮喔帕",
+      "offline_info_list": null,
+      "personal_tag_list": null,
+      "prevent_download": false,
+      "risk_notice_text": "",
+      "sec_uid": "MS4wLjABAAAAMd8kknr2tVkKwZ81vOK31lX6rrSu5fSzfly9f27sHxs",
+      "secret": 0,
+      "share_info": {
+        "share_desc": "",
+        "share_desc_info": "",
+        "share_qrcode_url": {
+          "height": 720,
+          "uri": "",
+          "url_list": [],
+          "width": 720
+        },
+        "share_title": "",
+        "share_title_myself": "",
+        "share_title_other": "",
+        "share_url": "",
+        "share_weibo_desc": ""
+      },
+      "short_id": "22156434950",
+      "signature": "☀️温柔的小镇—北村，有一群小可爱，带着伤痕与迷茫，笨拙的相爱，决定成为彼此的家人。\n✒️原创治愈漫画更新中…\n🕊️piupa@foxmail.com",
+      "signature_extra": null,
+      "special_follow_status": 0,
+      "special_people_labels": null,
+      "status": 1,
+      "story_interactive": 0,
+      "story_ttl": 0,
+      "text_extra": null,
+      "total_favorited": 308183,
+      "uid": "552422741902602",
+      "unique_id": "22156434950",
+      "user_age": -1,
+      "user_canceled": false,
+      "user_permissions": null,
+      "verification_type": 1
+    },
+    "music": {
+      "album": "",
+      "artist_user_infos": null,
+      "artists": [
+        {
+          "avatar": {
+            "uri": "168x168/aweme-avatar/tos-cn-avt-0015_b166a8446baec47ab1935c7eacc3f944",
+            "url_list": [
+              "https://p3-pc.douyinpic.com/img/aweme-avatar/tos-cn-avt-0015_b166a8446baec47ab1935c7eacc3f944~c5_168x168.jpeg?from=327834062"
+            ]
+          },
+          "enter_type": 1,
+          "handle": "Womingjun",
+          "is_verified": false,
+          "nick_name": "我是明俊",
+          "sec_uid": "MS4wLjABAAAANFrX9rt1VMnjGOeD8SebaFg8vveRF0iPYi5QRu58pR0",
+          "uid": "92930607545"
+        }
+      ],
+      "audition_duration": 138,
+      "author": "卢明俊",
+      "author_deleted": false,
+      "author_position": null,
+      "author_status": 1,
+      "avatar_large": {
+        "height": 720,
+        "uri": "1080x1080/aweme-avatar/tos-cn-avt-0015_b166a8446baec47ab1935c7eacc3f944",
+        "url_list": [
+          "https://p3-pc.douyinpic.com/aweme/1080x1080/aweme-avatar/tos-cn-avt-0015_b166a8446baec47ab1935c7eacc3f944.jpeg?from=327834062"
+        ],
+        "width": 720
+      },
+      "avatar_medium": {
+        "height": 720,
+        "uri": "720x720/aweme-avatar/tos-cn-avt-0015_b166a8446baec47ab1935c7eacc3f944",
+        "url_list": [
+          "https://p3-pc.douyinpic.com/aweme/720x720/aweme-avatar/tos-cn-avt-0015_b166a8446baec47ab1935c7eacc3f944.jpeg?from=327834062"
+        ],
+        "width": 720
+      },
+      "avatar_thumb": {
+        "height": 720,
+        "uri": "100x100/aweme-avatar/tos-cn-avt-0015_b166a8446baec47ab1935c7eacc3f944",
+        "url_list": [
+          "https://p3-pc.douyinpic.com/aweme/100x100/aweme-avatar/tos-cn-avt-0015_b166a8446baec47ab1935c7eacc3f944.jpeg?from=327834062"
+        ],
+        "width": 720
+      },
+      "binded_challenge_id": 0,
+      "can_background_play": true,
+      "collect_stat": 0,
+      "cover_color_hsv": {
+        "h": -24,
+        "s": 35,
+        "v": 28
+      },
+      "cover_hd": {
+        "height": 720,
+        "uri": "tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df",
+        "url_list": [
+          "https://p3.douyinpic.com/aweme/1080x1080/tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df.jpeg",
+          "https://p26.douyinpic.com/aweme/1080x1080/tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df.jpeg"
+        ],
+        "width": 720
+      },
+      "cover_large": {
+        "height": 720,
+        "uri": "tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df",
+        "url_list": [
+          "https://p3.douyinpic.com/aweme/720x720/tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df.jpeg",
+          "https://p26.douyinpic.com/aweme/720x720/tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df.jpeg"
+        ],
+        "width": 720
+      },
+      "cover_medium": {
+        "height": 720,
+        "uri": "tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df",
+        "url_list": [
+          "https://p3.douyinpic.com/aweme/200x200/tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df.jpeg",
+          "https://p26.douyinpic.com/aweme/200x200/tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df.jpeg"
+        ],
+        "width": 720
+      },
+      "cover_thumb": {
+        "height": 720,
+        "uri": "tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df",
+        "url_list": [
+          "https://p3.douyinpic.com/aweme/100x100/tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df.jpeg",
+          "https://p26.douyinpic.com/aweme/100x100/tos-cn-v-2774c002/a6625855d60f4c13bbe1d6bf048421df.jpeg"
+        ],
+        "width": 720
+      },
+      "dmv_auto_show": false,
+      "dsp_status": 10,
+      "duration": 138,
+      "end_time": 0,
+      "external_song_info": [],
+      "extra": "{\"aed_music_score\":0.9,\"peak\":\"0.6412628\",\"hit_high_follow_auto\":false,\"cover_colors\":{\"rgb\":[71,28,46]},\"music_tagging\":{\"Languages\":[\"non_vocal\"],\"Moods\":[\"Healing\",\"Calm\"],\"Genres\":[\"Easy Listening\"],\"Themes\":[\"Autumn\"],\"AEDs\":[\"non_vocal\"],\"SingingVersions\":null,\"Instruments\":null},\"music_label_id\":1112,\"aggregate_exempt_conf\":[],\"hit_high_follow_extend\":false,\"dsp_switch\":256,\"is_aed_music\":1,\"with_aed_model\":1,\"hit_high_follow_original\":false,\"is_high_follow_user\":false,\"review_unshelve_reason\":0,\"image_beats_url\":\"https://sf5-hl-ali-cdn-tos.douyinstatic.com/obj/tos-cn-v-2774c002/oADQ8AZtQACbkQFeAlAgVYa9NB8UUiXn0eMidP\",\"douyin_beats_info\":{},\"loudness\":\"-18.670628\",\"hotsoon_review_time\":1625544255,\"is_red\":0,\"is_subsidy_exp\":false,\"aed_singing_score\":0,\"has_edited\":0,\"reviewed\":0,\"beats\":{\"beats_tracker\":\"https://sf5-hl-ali-cdn-tos.douyinstatic.com/obj/tos-cn-v-2774c002/oADQ8AZtQACbkQFeAlAgVYa9NB8UUiXn0eMidP\",\"energy_trace\":\"https://sf5-hl-cdn-tos.douyinstatic.com/obj/tos-cn-v-2774c002/oQS2IEeJA1Ni3qSfAAnCIUXbZtlgRBCtA0D7bK\",\"merged_beats\":\"https://sf5-hl-cdn-tos.douyinstatic.com/obj/tos-cn-v-2774c002/o8f0u8BZNnlCXftURgAvCUSMIbviBIADnXIA0A\",\"audio_effect_onset\":\"https://sf5-hl-cdn-tos.douyinstatic.com/obj/tos-cn-v-2774c002/oAS0NnXUICNiPfAtLARDTJUAKICZgA8BlfB1sb\"},\"schedule_search_time\":0}",
+      "id": 6.52426238376572e+18,
+      "id_str": "6524262383765719811",
+      "is_audio_url_with_cookie": false,
+      "is_commerce_music": false,
+      "is_del_video": false,
+      "is_matched_metadata": false,
+      "is_original": true,
+      "is_original_sound": false,
+      "is_pgc": true,
+      "is_restricted": false,
+      "is_video_self_see": false,
+      "lyric_short_position": null,
+      "mid": "6524262383765719811",
+      "music_chart_ranks": null,
+      "music_collect_count": 0,
+      "music_cover_atmosphere_color_value": "",
+      "music_image_beats": {
+        "music_image_beats_url": {
+          "height": 720,
+          "uri": "tos-cn-v-2774c002/oADQ8AZtQACbkQFeAlAgVYa9NB8UUiXn0eMidP",
+          "url_list": [
+            "https://sf5-hl-ali-cdn-tos.douyinstatic.com/obj/tos-cn-v-2774c002/oADQ8AZtQACbkQFeAlAgVYa9NB8UUiXn0eMidP"
+          ],
+          "width": 720
+        }
+      },
+      "music_status": 1,
+      "musician_user_infos": null,
+      "mute_share": false,
+      "offline_desc": "",
+      "owner_handle": "",
+      "owner_id": "92930607545",
+      "owner_nickname": "",
+      "pgc_music_type": 1,
+      "play_url": {
+        "height": 720,
+        "uri": "https://sf3-cdn-tos.douyinstatic.com/obj/tos-cn-ve-2774/9fe68d22f03e4273a36cc902bd45103b",
+        "url_key": "6524262383765719811",
+        "url_list": [
+          "https://sf3-cdn-tos.douyinstatic.com/obj/tos-cn-ve-2774/9fe68d22f03e4273a36cc902bd45103b",
+          "https://sf5-hl-cdn-tos.douyinstatic.com/obj/tos-cn-ve-2774/9fe68d22f03e4273a36cc902bd45103b"
+        ],
+        "width": 720
+      },
+      "position": null,
+      "prevent_download": false,
+      "prevent_item_download_status": 0,
+      "preview_end_time": 0,
+      "preview_start_time": 0,
+      "reason_type": 0,
+      "redirect": false,
+      "schema_url": "",
+      "search_impr": {
+        "entity_id": "6524262383765719811"
+      },
+      "sec_uid": "MS4wLjABAAAANFrX9rt1VMnjGOeD8SebaFg8vveRF0iPYi5QRu58pR0",
+      "shoot_duration": 138,
+      "show_origin_clip": false,
+      "song": {
+        "artists": null,
+        "chorus": {
+          "duration_ms": 38784,
+          "start_ms": 7296
+        },
+        "id": 6.750896943213316e+18,
+        "id_str": "6750896943213316097",
+        "title": "雨中漫步"
+      },
+      "source_platform": 25,
+      "start_time": 0,
+      "status": 1,
+      "strong_beat_url": {
+        "height": 720,
+        "uri": "https://sf5-hl-cdn-tos.douyinstatic.com/obj/tos-cn-v-2774c002/2343f8530d8949e6b01d20ad890218d2",
+        "url_list": [
+          "https://sf5-hl-cdn-tos.douyinstatic.com/obj/tos-cn-v-2774c002/2343f8530d8949e6b01d20ad890218d2",
+          "https://sf5-hl-ali-cdn-tos.douyinstatic.com/obj/tos-cn-v-2774c002/2343f8530d8949e6b01d20ad890218d2"
+        ],
+        "width": 720
+      },
+      "tag_list": null,
+      "title": "雨中漫步",
+      "unshelve_countries": null,
+      "user_count": 0,
+      "video_duration": 6000
+    },
+    "statistics": {
+      "admire_count": 5,
+      "aweme_id": "7571815302888002170",
+      "collect_count": 520,
+      "comment_count": 277,
+      "digg_count": 8953,
+      "play_count": 0,
+      "recommend_count": 401,
+      "share_count": 1928
+    },
+    "cover_data": {
+      "cover": {
+        "height": 720,
+        "uri": "tos-cn-i-0813c000-ce/o0QUeA7BQJA88gBRASAgjkPN8EXvXeKMP5PFeD",
+        "url_list": [
+          "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/o0QUeA7BQJA88gBRASAgjkPN8EXvXeKMP5PFeD~noop.jpeg?lk3s=138a59ce&x-expires=1764241200&x-signature=%2FQJdBaNLp2%2FO1jngeGjPkFsCJ4I%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&biz_tag=pcweb_cover&l=20251113190914EA0C12526B311049AD15",
+          "https://p9-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/o0QUeA7BQJA88gBRASAgjkPN8EXvXeKMP5PFeD~noop.jpeg?lk3s=138a59ce&x-expires=1764241200&x-signature=Pem0yhsQpvPSk5WxV2u78BF1USk%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&biz_tag=pcweb_cover&l=20251113190914EA0C12526B311049AD15"
+        ],
+        "width": 720
+      },
+      "origin_cover": {
+        "height": 720,
+        "uri": "tos-cn-i-0813c000-ce/o0QUeA7BQJA88gBRASAgjkPN8EXvXeKMP5PFeD",
+        "url_list": [
+          "https://p9-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/o0QUeA7BQJA88gBRASAgjkPN8EXvXeKMP5PFeD~noop.jpeg?lk3s=138a59ce&x-expires=1764241200&x-signature=Pem0yhsQpvPSk5WxV2u78BF1USk%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&biz_tag=pcweb_cover&l=20251113190914EA0C12526B311049AD15",
+          "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/o0QUeA7BQJA88gBRASAgjkPN8EXvXeKMP5PFeD~noop.jpeg?lk3s=138a59ce&x-expires=1764241200&x-signature=%2FQJdBaNLp2%2FO1jngeGjPkFsCJ4I%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&biz_tag=pcweb_cover&l=20251113190914EA0C12526B311049AD15"
+        ],
+        "width": 720
+      },
+      "dynamic_cover": null
+    },
+    "hashtags": [
+      {
+        "caption_end": 0,
+        "caption_start": 0,
+        "end": 7,
+        "start": 0,
+        "type": 7
+      },
+      {
+        "caption_end": 0,
+        "caption_start": 0,
+        "end": 8,
+        "start": 7,
+        "type": 8
+      },
+      {
+        "caption_end": 0,
+        "caption_start": 0,
+        "end": 24,
+        "hashtag_id": "1583277203968013",
+        "hashtag_name": "画一个故事",
+        "is_commerce": false,
+        "start": 18,
+        "type": 1
+      },
+      {
+        "caption_end": 0,
+        "caption_start": 0,
+        "end": 30,
+        "hashtag_id": "1582577518339085",
+        "hashtag_name": "原创漫画",
+        "is_commerce": false,
+        "start": 25,
+        "type": 1
+      },
+      {
+        "caption_end": 0,
+        "caption_start": 0,
+        "end": 37,
+        "hashtag_id": "1601607393810435",
+        "hashtag_name": "治愈系漫画",
+        "is_commerce": false,
+        "start": 31,
+        "type": 1
+      },
+      {
+        "caption_end": 0,
+        "caption_start": 0,
+        "end": 47,
+        "hashtag_id": "7418795684444244003",
+        "hashtag_name": "piupa皮喔帕",
+        "is_commerce": false,
+        "start": 38,
+        "type": 1
+      },
+      {
+        "caption_end": 0,
+        "caption_start": 0,
+        "end": 52,
+        "hashtag_id": "1551203555277826",
+        "hashtag_name": "治愈系",
+        "is_commerce": false,
+        "start": 48,
+        "type": 1
+      }
+    ],
+    "image_data": {
+      "no_watermark_image_list": [
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/o0QUeA7BQJA88gBRASAgjkPN8EXvXeKMP5PFeD~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=9zEem0eHjF2M%2B3kfu2ZHWiMpbfE%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/o082ePF8KEJXessQAgNADAAIXPvgeSkjMB7RQB~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=LktYa8visYVBYWg%2B5rudjUrugNo%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ocBemFQg8jAXwQPeBK7XDK8jAvM6JEAgNAeSPR~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=kMtGd4ypkMX2wazNheTigEYDPyY%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/os0vCA8MSEeDXhNXQAAPeAQPBJeR8KTgj7g8BF~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=fWCauYrxx3zGslKoMcV%2Fckrmtis%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/owjeeAA4SBJVrXeREDXQgvMFBKA7ZIAgQP8N8P~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=DRPcB7xyKuxX%2B9JR1bgiYAVqlRM%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/oESA83RPFEXQPAX7DJNgj8VAAKBegf8BVveMQ8~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=PxOeqaERVhE0XAQ1%2BjkMlvzcjow%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ooYRFPvQAj7eAgLQzEXSAeBMgA8PAJ4e8PKBND~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=3BQBzwaiEjOSB6e6wqzjkmLBxig%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ow8SZN7BBfMKeRhQUeXvFQA8JEAjggEDPYA8PA~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=kep0zKZ6M5cx6LApIY12cxpP9kU%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ow7BlJFeADAgYAeSIP8XQvNKQEj8wAIRIgMeBP~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=h5tOSv3EgS8066h8vFZYUbQFCjk%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/oESBQRYBAMQJNgAAMeYE8XeDvJ8aFgjP7PKeYA~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=fPldo73cBghI75zRO%2FHrSlHab0E%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p9-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/oY5RNSgKeAQZFvBKAG7S8eEceIJ8LBAQnPAgOx~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=fDx5fyIVyBmAeRY71Tv1pYiHhv4%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/oYJ8ASPEnQvIBLL7dSgAUYA85egegNxRABKQeG~tplv-dy-aweme-images:q75.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=5v7NxW4KnIu6OrEhYceOW9Tctdg%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15"
+      ],
+      "watermark_image_list": [
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/o0QUeA7BQJA88gBRASAgjkPN8EXvXeKMP5PFeD~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=suhhrxCuUZ9xWjSgKmbWYzPg5Io%3D&sig=I_OtPe--ubWXHK3saPBEX88QuD0%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/o082ePF8KEJXessQAgNADAAIXPvgeSkjMB7RQB~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=6ZyfAplpmX%2FaSCzVW9PYBzuvz7g%3D&sig=-X7LpURh5aI3OPbDT8WpwxPJcsQ%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ocBemFQg8jAXwQPeBK7XDK8jAvM6JEAgNAeSPR~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=wSttzaNFZvyRwi4Qp9bUwPLwljw%3D&sig=EFm28XQwu04J1aUJEL0LbwahDqQ%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/os0vCA8MSEeDXhNXQAAPeAQPBJeR8KTgj7g8BF~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=l6JIpkREtbjOMrymvTAwOnBJTgc%3D&sig=S2MhG2c_WcnvI-dtL84FHjU2zhA%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/owjeeAA4SBJVrXeREDXQgvMFBKA7ZIAgQP8N8P~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=ld780yhd4eUvmc5B8vytR3FyOmo%3D&sig=uD3sjOrKcmkD08j2_e20-nqQvqo%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/oESA83RPFEXQPAX7DJNgj8VAAKBegf8BVveMQ8~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=loBmBlh7eT633TR8U%2B8Is9JqkVs%3D&sig=L4FaG9AMRy53ZSTMKikyi_jF0tk%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p9-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ooYRFPvQAj7eAgLQzEXSAeBMgA8PAJ4e8PKBND~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=44b0XPLzelM7LJHdHhJ8fX%2BSxm4%3D&sig=9AVaXk3zZYdMacGmGIOHSUiVH7Y%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p9-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ow8SZN7BBfMKeRhQUeXvFQA8JEAjggEDPYA8PA~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=ee0GCTdOnDbHFmpb%2BNZagiBywJc%3D&sig=7YurHkYRCXjWUcp4vz7Z0fASptg%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p9-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/ow7BlJFeADAgYAeSIP8XQvNKQEj8wAIRIgMeBP~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=CJMz13q8vYzumMx8HHkutF9kqAo%3D&sig=Uxabu1ILhrtwb0-WE49dyxorHEA%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/oESBQRYBAMQJNgAAMeYE8XeDvJ8aFgjP7PKeYA~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=KnW0iwq36GIROUG%2B2wXAH5dPYyA%3D&sig=LkFYLmIsGz5h62PBmUKnG8xGEM8%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/oY5RNSgKeAQZFvBKAG7S8eEceIJ8LBAQnPAgOx~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=9L1BYLi%2BnQDWr7%2FH2lDEoL5DkSg%3D&sig=ipzgT3YY4FaUF26-52q4ht4fn6s%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15",
+        "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813c000-ce/oYJ8ASPEnQvIBLL7dSgAUYA85egegNxRABKQeG~tplv-dy-water-v2:5oqW6Z-z5Y-377yaMjIxNTY0MzQ5NTA=:1440:1920.webp?lk3s=138a59ce&x-expires=1765623600&x-signature=rrmaImbJykwiOPXpED9GRMPVTDQ%3D&sig=WfQTprvXZ5Bot4ZrjBBCAvLm4O0%3D&from=327834062&s=PackSourceEnum_AWEME_DETAIL&se=false&sc=image&biz_tag=aweme_images&l=20251113190914EA0C12526B311049AD15"
+      ]
+    }
+  }
+}

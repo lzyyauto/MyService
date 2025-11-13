@@ -678,8 +678,8 @@ class VideoProcessorService:
             image_data = video_info.get('image_data', {})
             no_watermark_list = image_data.get('no_watermark_image_list', [])
 
-            # 添加所有无水印链接（最多3个）
-            download_urls = no_watermark_list[:3]
+            # 添加所有无水印链接
+            download_urls = no_watermark_list
 
         elif media_type == "live_photo":
             # Live Photo：与图片相同处理，但需要标记
@@ -690,7 +690,7 @@ class VideoProcessorService:
 
             # 对于Live Photo，返回格式为 "image:URL"
             # 如果有视频信息，可能需要添加 "video:URL" 格式
-            for url in no_watermark_list[:3]:
+            for url in no_watermark_list:
                 download_urls.append(f"image:{url}")
 
             # 注意：简化结构可能不包含Live Photo的视频URL
