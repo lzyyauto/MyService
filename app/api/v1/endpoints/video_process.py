@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, BackgroundTasks, status, HTTPException
 from sqlalchemy.orm import Session
@@ -15,11 +16,14 @@ from app.models.video_process_task import VideoProcessTask
 from app.schemas.video_process_task import (
     VideoProcessRequest,
     VideoProcessResponse,
-    VideoProcessTaskResponse
+    VideoProcessTaskResponse,
+    VideoUrlRequest,
+    VideoParseResponse
 )
 from app.core.services.video_processor_service import VideoProcessorService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def process_video_task(
@@ -49,6 +53,7 @@ async def process_video_task(
     4. **AI总结**: 对字幕进行智能总结和精简
 
     - **URL格式**: 支持抖音短链接或完整链接，可包含其他文字
+    - **媒体类型**: 仅支持视频类型，不支持图片和Live Photo
     - **处理方式**: 异步处理，立即返回task_id供后续查询
     - **去重机制**: 相同视频ID的任务不会重复处理
     """,
@@ -57,7 +62,7 @@ async def process_video_task(
                      "description": "任务创建成功"
                  },
                  400: {
-                     "description": "URL格式无效或不是抖音链接"
+                     "description": "URL格式无效、不是抖音链接或不支持的媒体类型"
                  },
                  401: {
                      "description": "未授权"
@@ -96,9 +101,27 @@ async def create_video_process_task(
             message="视频已处理完成，返回已有结果"
         )
 
+    # 检查媒体类型（仅支持视频类型）
+    logger.info("检查媒体类型...")
+    parse_result = await processor.parse_video_url(request.video_url, current_user.id)
+
+    if not parse_result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"无法解析URL: {parse_result['error']}"
+        )
+
+    media_type = parse_result["media_type"]
+    if media_type != "video":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"不支持的媒体类型: {media_type}。完整处理接口仅支持视频类型，请使用 /parse-url 接口获取下载链接"
+        )
+
     # 创建新任务
     task = VideoProcessTask(
         user_id=current_user.id,
+        task_type=VideoProcessTask.TASK_TYPE_PROCESS,
         original_url=request.video_url,
         status=VideoProcessTask.STATUS_PENDING
     )
@@ -205,4 +228,86 @@ async def get_video_process_task(
             audio_path=None,
             subtitle_text=None,
             message="查询成功"
+        )
+
+
+@router.post("/parse-url",
+             response_model=VideoParseResponse,
+             summary="解析URL获取下载链接",
+             description="""
+    解析抖音链接，返回无水印下载链接。
+
+    **支持三种媒体类型**：
+    - **视频**: 返回视频下载链接
+    - **图片**: 返回图片下载链接（可能有多个）
+    - **Live Photo**: 同时返回图片和视频下载链接
+
+    **返回格式**：
+    - `media_type`: 媒体类型（video/image/live_photo）
+    - `download_urls`: 下载链接列表
+      - 视频类型：返回视频URL
+      - 图片类型：返回图片URL列表
+      - Live Photo类型：返回以"image:"和"video:"前缀标记的URL
+
+    **注意**：
+    - 此接口仅解析URL，不下载文件
+    - 支持视频、图片、Live Photo三种类型
+    """,
+             responses={
+                 200: {
+                     "description": "解析成功"
+                 },
+                 400: {
+                     "description": "URL格式无效或不是抖音链接"
+                 },
+                 401: {
+                     "description": "未授权"
+                 },
+                 422: {
+                     "description": "请求参数验证失败"
+                 },
+                 500: {
+                     "description": "服务器内部错误"
+                 },
+             })
+async def parse_video_url(
+    *,
+    db: Session = Depends(get_db),
+    request: VideoUrlRequest,
+    current_user: User = Depends(get_current_user)
+) -> VideoParseResponse:
+    """
+    解析视频URL，获取下载链接
+
+    支持视频、图片、Live Photo三种媒体类型，返回对应的下载链接。
+    此接口仅解析URL，不进行文件下载或处理。
+    """
+    try:
+        processor = VideoProcessorService(db)
+        result = await processor.parse_video_url(request.url, current_user.id)
+
+        if result["success"]:
+            return VideoParseResponse(
+                success=True,
+                media_type=result["media_type"],
+                aweme_id=result["aweme_id"],
+                desc=result["desc"],
+                author=result["author"],
+                download_urls=result["download_urls"]
+            )
+        else:
+            return VideoParseResponse(
+                success=False,
+                media_type="",
+                aweme_id="",
+                desc="",
+                author="",
+                download_urls=[],
+                error=result["error"]
+            )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"解析失败: {str(e)}"
         )

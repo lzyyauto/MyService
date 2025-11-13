@@ -3,7 +3,7 @@
 Pydantic模型用于请求验证和响应序列化
 """
 
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, Field, HttpUrl, validator
 import re
@@ -115,3 +115,67 @@ class VideoProcessTaskUpdate(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ==================== 新的URL解析接口Schema ====================
+
+class VideoUrlRequest(BaseModel):
+    """URL解析请求"""
+
+    url: str = Field(
+        ...,
+        description="抖音链接（视频、图片或Live Photo，可包含其他文字）",
+        example="请解析这个链接：https://v.douyin.com/iJgDkYhC/"
+    )
+
+    @validator('url')
+    def validate_url(cls, v):
+        """验证URL是否包含有效的链接"""
+        # 检查是否包含http或https链接
+        url_pattern = r'https?://[^\s]+'
+        if not re.search(url_pattern, v):
+            raise ValueError('必须包含有效的URL')
+
+        # 提取URL并验证
+        match = re.search(url_pattern, v)
+        if match:
+            url = match.group()
+            # 验证是否为抖音相关URL
+            if not any(domain in url for domain in ['douyin.com', 'iesdouyin.com', 'v.douyin.com']):
+                raise ValueError('必须是抖音相关链接')
+
+        return v
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "url": "请解析这个链接：https://v.douyin.com/iJgDkYhC/"
+            }
+        }
+
+
+class VideoParseResponse(BaseModel):
+    """URL解析响应"""
+
+    success: bool = Field(..., description="是否成功")
+    media_type: str = Field(..., description="媒体类型：video/image/live_photo")
+    aweme_id: str = Field(..., description="作品ID")
+    desc: str = Field(..., description="作品描述")
+    author: str = Field(..., description="作者昵称")
+    download_urls: List[str] = Field(..., description="下载链接列表")
+    error: Optional[str] = Field(None, description="错误信息（失败时返回）")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "media_type": "video",
+                "aweme_id": "7571858909406989683",
+                "desc": "这是一个测试视频",
+                "author": "作者昵称",
+                "download_urls": [
+                    "https://example.com/video1.mp4",
+                    "https://example.com/video2.mp4"
+                ]
+            }
+        }

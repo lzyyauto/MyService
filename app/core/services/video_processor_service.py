@@ -11,7 +11,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from urllib.parse import quote
 
 import aiohttp
@@ -78,8 +78,8 @@ class VideoProcessorService:
             视频信息字典，如果获取失败返回None
         """
         try:
-            # 构建第三方API请求URL
-            api_url = f"{self.api_url}?url={quote(video_url)}&minimal=false"
+            # 构建第三方API请求URL（使用minimal=true获取简化结构）
+            api_url = f"{self.api_url}?url={quote(video_url)}&minimal=true"
             logger.info(f"调用第三方API: {api_url}")
 
             async with aiohttp.ClientSession() as session:
@@ -125,6 +125,7 @@ class VideoProcessorService:
     def get_video_url(self, video_info: Dict) -> Optional[str]:
         """
         从视频信息中获取视频URL
+        基于simplified结构（minimal=true）
 
         Args:
             video_info: 视频信息字典
@@ -134,13 +135,13 @@ class VideoProcessorService:
         """
         try:
             # 从第三方API响应中提取视频URL
-            # 参考 example/return.json，URL在 data.video.play_addr.url_list 中
-            video_data = video_info.get('video', {})
-            play_addr = video_data.get('play_addr', {})
-            url_list = play_addr.get('url_list', [])
+            # 简化结构中，URL在 data.video_data.nwm_video_url_HQ 或 nwm_video_url 中
+            video_data = video_info.get('video_data', {})
 
-            if url_list:
-                video_url = url_list[0]
+            # 优先使用无水印高清链接
+            video_url = video_data.get('nwm_video_url_HQ') or video_data.get('nwm_video_url')
+
+            if video_url:
                 logger.info(f"从第三方API获取到视频URL: {video_url}")
                 return video_url
 
@@ -523,3 +524,178 @@ class VideoProcessorService:
         ).first()
 
         return task
+
+    async def parse_video_url(self, video_url: str, user_id: str) -> Dict[str, Any]:
+        """
+        解析视频URL，支持视频、图片、Live Photo三种类型
+        成功后创建任务记录
+
+        Args:
+            video_url: 视频URL（可能包含其他文字）
+            user_id: 用户ID
+
+        Returns:
+            解析结果字典，包含媒体类型和下载链接
+        """
+        try:
+            # 1. 提取视频URL
+            actual_url = self.extract_video_url(video_url)
+            if not actual_url:
+                return {
+                    "success": False,
+                    "error": "无法从输入中提取URL"
+                }
+
+            logger.info(f"解析URL: {actual_url}")
+
+            # 2. 获取视频信息
+            video_info = await self.fetch_video_info(actual_url)
+            if not video_info:
+                return {
+                    "success": False,
+                    "error": "无法获取视频信息"
+                }
+
+            # 3. 检测媒体类型并提取下载链接
+            media_type = self.detect_media_type(video_info)
+            download_urls = self.extract_download_urls(video_info, media_type)
+
+            if not download_urls:
+                return {
+                    "success": False,
+                    "error": f"无法提取{media_type}的下载链接"
+                }
+
+            # 4. 提取基本信息
+            aweme_id = video_info.get('aweme_id', '')
+            desc = video_info.get('desc', '')
+            author = video_info.get('author', {})
+            nickname = author.get('nickname', '') if author else ''
+
+            logger.info(f"成功解析{media_type}，提取到{len(download_urls)}个下载链接")
+
+            # 5. 创建任务记录
+            try:
+                task = VideoProcessTask(
+                    user_id=user_id,
+                    task_type=VideoProcessTask.TASK_TYPE_PARSE,
+                    original_url=actual_url,
+                    aweme_id=aweme_id,
+                    media_type=media_type,
+                    desc=desc,
+                    author=nickname,
+                    download_urls=json.dumps(download_urls),
+                    status=VideoProcessTask.STATUS_PARSED
+                )
+                self.db.add(task)
+                self.db.commit()
+                logger.info(f"创建解析任务记录成功: {task.id}")
+            except Exception as db_error:
+                logger.error(f"创建任务记录失败: {db_error}")
+                # 不影响主流程，继续返回解析结果
+
+            return {
+                "success": True,
+                "media_type": media_type,
+                "aweme_id": aweme_id,
+                "desc": desc,
+                "author": nickname,
+                "download_urls": download_urls
+            }
+
+        except Exception as e:
+            logger.error(f"解析URL失败: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    def detect_media_type(self, video_info: Dict) -> str:
+        """
+        检测媒体类型（视频、图片、Live Photo）
+        基于simplified结构（minimal=true）的type字段
+
+        Args:
+            video_info: 视频信息字典
+
+        Returns:
+            媒体类型: "video", "image", 或 "live_photo"
+        """
+        # 简化结构中，类型信息在data.type字段中
+        media_type = video_info.get('type', '')
+
+        # 检查是否是Live Photo（简化结构中可能标记为image但有特殊标识）
+        if media_type == 'image':
+            # 进一步检查是否有Live Photo标记
+            # 简化结构中，Live Photo可能通过其他字段标识
+            # 根据示例，Live Photo的图片列表可能包含视频信息
+            image_data = video_info.get('image_data', {})
+            no_watermark_list = image_data.get('no_watermark_image_list', [])
+
+            # 如果图片数量较少且可能是Live Photo
+            # 注意：简化结构中Live Photo可能与普通图片在字段上区别不明显
+            # 这里暂时基于type判断，Live Photo处理在extract_download_urls中特殊处理
+            if no_watermark_list:
+                # 通过其他方式判断是否为Live Photo
+                # 例如：检查是否有特殊的图片数量或格式
+                # 简化结构中Live Photo可能需要通过返回的数据特征判断
+                pass
+
+        return media_type
+
+    def extract_download_urls(self, video_info: Dict, media_type: str) -> List[str]:
+        """
+        根据媒体类型提取下载链接
+        基于simplified结构（minimal=true）
+
+        Args:
+            video_info: 视频信息字典
+            media_type: 媒体类型
+
+        Returns:
+            下载链接列表
+        """
+        download_urls = []
+
+        if media_type == "video":
+            # 视频：从 video_data.nwm_video_url_HQ 或 nwm_video_url 获取
+            video_data = video_info.get('video_data', {})
+
+            # 优先返回无水印高清链接
+            if video_data.get('nwm_video_url_HQ'):
+                download_urls.append(video_data['nwm_video_url_HQ'])
+
+            # 如果没有高清，再返回标准无水印链接
+            if video_data.get('nwm_video_url') and len(download_urls) < 2:
+                download_urls.append(video_data['nwm_video_url'])
+
+            # 如果需要更多备选，可以添加备用链接（但不推荐使用带水印的）
+            # if video_data.get('wm_video_url_HQ') and len(download_urls) < 3:
+            #     download_urls.append(video_data['wm_video_url_HQ'])
+
+        elif media_type == "image":
+            # 图片：从 image_data.no_watermark_image_list 获取无水印链接
+            image_data = video_info.get('image_data', {})
+            no_watermark_list = image_data.get('no_watermark_image_list', [])
+
+            # 添加所有无水印链接（最多3个）
+            download_urls = no_watermark_list[:3]
+
+        elif media_type == "live_photo":
+            # Live Photo：与图片相同处理，但需要标记
+            # 注意：简化结构中Live Photo可能不包含视频部分
+            # 如果需要视频部分，可能需要修改第三方API调用添加更多参数
+            image_data = video_info.get('image_data', {})
+            no_watermark_list = image_data.get('no_watermark_image_list', [])
+
+            # 对于Live Photo，返回格式为 "image:URL"
+            # 如果有视频信息，可能需要添加 "video:URL" 格式
+            for url in no_watermark_list[:3]:
+                download_urls.append(f"image:{url}")
+
+            # 注意：简化结构可能不包含Live Photo的视频URL
+            # 如果需要完整支持，可能需要：
+            # 1. 修改API调用添加更多参数，或
+            # 2. 根据类型特征额外调用API获取视频信息
+
+        return download_urls

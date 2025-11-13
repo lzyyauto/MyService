@@ -14,14 +14,26 @@ class VideoProcessTask(Base):
 
     __tablename__ = "video_process_tasks"
 
+    # 任务类型常量
+    TASK_TYPE_PARSE = "parse"  # 仅解析URL，不处理
+    TASK_TYPE_PROCESS = "process"  # 完整处理流程
+
     # 任务状态常量
     STATUS_PENDING = "pending"
     STATUS_PROCESSING = "processing"
     STATUS_COMPLETED = "completed"
     STATUS_FAILED = "failed"
+    STATUS_PARSED = "parsed"  # 仅解析完成
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, comment="任务ID")
     user_id = Column(String, nullable=False, index=True, comment="用户ID")
+    task_type = Column(
+        String,
+        nullable=False,
+        default=TASK_TYPE_PROCESS,
+        index=True,
+        comment="任务类型：parse-仅解析URL, process-完整处理"
+    )
 
     # 视频信息
     douyin_id = Column(String, nullable=True, index=True, comment="抖音视频ID（去重用）")
@@ -42,9 +54,16 @@ class VideoProcessTask(Base):
         nullable=False,
         default=STATUS_PENDING,
         index=True,
-        comment="任务状态：pending-等待处理, processing-处理中, completed-已完成, failed-失败"
+        comment="任务状态：pending-等待处理, processing-处理中, completed-已完成, failed-失败, parsed-仅解析完成"
     )
     error_message = Column(Text, nullable=True, comment="错误信息")
+
+    # 解析结果（仅解析类型的任务使用）
+    media_type = Column(String, nullable=True, comment="媒体类型：video/image/live_photo")
+    aweme_id = Column(String, nullable=True, comment="抖音视频ID")
+    desc = Column(Text, nullable=True, comment="视频描述")
+    author = Column(String, nullable=True, comment="作者昵称")
+    download_urls = Column(Text, nullable=True, comment="下载链接列表（JSON格式）")
 
     # 时间戳
     created_at = Column(

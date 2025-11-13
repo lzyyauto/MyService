@@ -83,6 +83,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ### 视频处理
 - `POST /api/v1/video-process/` - 提交视频处理任务
 - `GET /api/v1/video-process/{task_id}` - 查询处理状态
+- `POST /api/v1/video-process/parse-url` - 仅解析视频URL（快速获取下载链接）
 
 ## 🔐 认证方式
 
@@ -111,19 +112,6 @@ app/
 │   ├── gtd_task.py     # GTD任务
 │   └── video_process_task.py # 视频任务
 └── schemas/             # 数据验证
-```
-
-## 🧪 测试
-
-```bash
-# 运行所有测试
-pytest
-
-# 运行覆盖率测试
-pytest --cov=app
-
-# 运行特定测试
-pytest tests/test_video_processor_service.py
 ```
 
 ## ⚙️ 配置说明
