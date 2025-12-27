@@ -101,23 +101,6 @@ async def create_video_process_task(
             message="视频已处理完成，返回已有结果"
         )
 
-    # 检查媒体类型（仅支持视频类型）
-    logger.info("检查媒体类型...")
-    parse_result = await processor.parse_video_url(request.video_url, current_user.id)
-
-    if not parse_result["success"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"无法解析URL: {parse_result['error']}"
-        )
-
-    media_type = parse_result["media_type"]
-    if media_type != "video":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"不支持的媒体类型: {media_type}。完整处理接口仅支持视频类型，请使用 /parse-url 接口获取下载链接"
-        )
-
     # 创建新任务
     task = VideoProcessTask(
         user_id=current_user.id,
@@ -289,21 +272,13 @@ async def parse_video_url(
         if result["success"]:
             return VideoParseResponse(
                 success=True,
-                media_type=result["media_type"],
-                aweme_id=result["aweme_id"],
-                desc=result["desc"],
-                author=result["author"],
-                download_urls=result["download_urls"]
+                download_urls=result.get("download_urls", [])
             )
         else:
             return VideoParseResponse(
                 success=False,
-                media_type="",
-                aweme_id="",
-                desc="",
-                author="",
                 download_urls=[],
-                error=result["error"]
+                error=result.get("error")
             )
 
     except Exception as e:

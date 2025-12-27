@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,7 @@ from app.core.config import settings
 from app.db.init_db import init_db
 from app.services.telegram_service import telegram_service
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.staticfiles import StaticFiles
 
 
 def setup_logging():
@@ -80,6 +82,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 挂载下载文件的静态目录
+if not os.path.exists(settings.TG_DOWNLOAD_PATH):
+    os.makedirs(settings.TG_DOWNLOAD_PATH)
+app.mount("/downloads", StaticFiles(directory=settings.TG_DOWNLOAD_PATH), name="downloads")
 
 # 注册路由
 app.include_router(

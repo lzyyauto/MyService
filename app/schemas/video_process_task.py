@@ -158,10 +158,10 @@ class VideoParseResponse(BaseModel):
     """URL解析响应"""
 
     success: bool = Field(..., description="是否成功")
-    media_type: str = Field(..., description="媒体类型：video/image/live_photo")
-    aweme_id: str = Field(..., description="作品ID")
-    desc: str = Field(..., description="作品描述")
-    author: str = Field(..., description="作者昵称")
+    media_type: Optional[str] = Field(None, description="媒体类型：video/image/live_photo")
+    aweme_id: Optional[str] = Field(None, description="作品ID")
+    desc: Optional[str] = Field(None, description="作品描述")
+    author: Optional[str] = Field(None, description="作者昵称")
     download_urls: List[str] = Field(..., description="下载链接列表")
     error: Optional[str] = Field(None, description="错误信息（失败时返回）")
 

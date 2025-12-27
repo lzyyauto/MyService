@@ -1,6 +1,8 @@
 import os
 import asyncio
 import logging
+from typing import Optional, List, Any, Dict
+import aiohttp
 from telethon import TelegramClient, events
 from app.core.config import settings
 
@@ -12,6 +14,8 @@ class TelegramService:
         self.api_hash = settings.TG_API_HASH
         self.session_str = settings.TG_SESSION
         self.download_path = settings.TG_DOWNLOAD_PATH
+        self.douyin_bot = settings.TG_DOUYIN_BOT
+        self.x_bot = settings.TG_X_BOT
         
         # 确保下载目录存在
         if not os.path.exists(self.download_path):
@@ -70,24 +74,22 @@ class TelegramService:
             # 如果是文本消息带按钮
             if msg.reply_markup:
                 # 记录按钮链接
+                has_buttons = False
                 for row in msg.reply_markup.rows:
                     for button in row.buttons:
                         if hasattr(button, 'url') and button.url:
                             urls[button.text] = button.url
+                            has_buttons = True
+                
+                # 如果收到带链接的按钮，也触发 Event
+                if has_buttons:
+                    event_received.set()
             
             # 检查是否有媒体
             if msg.video or msg.photo:
                 received_messages.append(msg)
                 
-                # 如果是分组消息（Album），需要等待一段时间手机后续图片
-                if msg.grouped_id:
-                    # 每次收到带 grouped_id 的消息都重置等待，直到一段时间没新消息
-                    # 这里简化处理：如果是 Album，我们稍微延迟 set event
-                    # 或者我们可以通过检查 grouped_id 自动处理，但简单起见，我们先收集
-                    pass
-                
-                # 只要收到带媒体的消息或带按钮的消息，我们先触发 Event
-                # 对于多图，由于 Bot 通常很快发完，我们稍微后面加个 delay
+                # 收到媒体，触发 Event
                 event_received.set()
 
         try:
@@ -147,24 +149,90 @@ class TelegramService:
             logger.error(f"Error downloading media: {str(e)}")
             return downloaded_paths
 
+    async def download_from_url(self, url: str) -> Optional[str]:
+        """
+        通过 URL 下载文件（用于按钮链接回退）
+        :param url: 文件下载链接
+        :return: 下载后的本地文件路径，失败返回 None
+        """
+        try:
+            logger.info(f"Downloading file from URL: {url}")
+            
+            # 从 URL 解析文件名，或者生成一个
+            import uuid
+            file_ext = ".mp4" # 默认为 mp4
+            if "?" in url:
+                base_url = url.split("?")[0]
+            else:
+                base_url = url
+                
+            if base_url.lower().endswith((".mp4", ".mov", ".avi")):
+                file_ext = os.path.splitext(base_url)[1]
+            elif "image" in url.lower() or "jpg" in url.lower() or "png" in url.lower():
+                file_ext = ".jpg"
+                
+            filename = f"url_dl_{uuid.uuid4().hex[:8]}{file_ext}"
+            save_path = os.path.join(self.download_path, filename)
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, timeout=300) as response:
+                    if response.status == 200:
+                        content = await response.read()
+                        with open(save_path, 'wb') as f:
+                            f.write(content)
+                        logger.info(f"File downloaded from URL to: {save_path}")
+                        return save_path
+                    else:
+                        logger.error(f"Failed to download from URL. Status: {response.status}")
+                        return None
+        except Exception as e:
+            logger.error(f"Error downloading from URL: {str(e)}")
+            return None
+
     async def get_and_download_video(self, share_text: str, timeout: int = 45):
         """
         整合流程：自动路由 Bot -> 发送文本 -> 获取消息 -> 下载所有媒体文件
+        如果 Bot 返回了按钮链接（针对大文件），则通过 URL 下载。
         :param share_text: 分享文本
         :param timeout: 超时时间
         :return: 下载后的文件路径列表 (List[str]) 或 None
         """
         # 简单的路由逻辑
-        target_bot = "@DouYintg_bot"
+        target_bot = self.douyin_bot
         if "x.com" in share_text.lower() or "twitter.com" in share_text.lower():
-            target_bot = "@xx_video_download_bot"
+            target_bot = self.x_bot
             
         urls, media_msgs = await self.get_video_url_from_bot(share_text, target_bot, timeout)
         
+        # 1. 优先尝试直接媒体消息
         if media_msgs:
             return await self.download_media(media_msgs)
         
-        logger.warning(f"Bot {target_bot} did not return any direct media files.")
+        # 2. 如果没有媒体消息，检查按钮链接（针对超大视频的回退）
+        if urls:
+            logger.info(f"No direct media messages, checking available URLs: {list(urls.keys())}")
+            # 优先级：无水印链接 > 高清下载 > 原始链接
+            priority_keys = ["无水印链接", "高清下载", "原始链接", "高清下载 (无水印)"]
+            
+            for key in priority_keys:
+                if key in urls:
+                    logger.info(f"Found priority URL key: {key}")
+                    dl_path = await self.download_from_url(urls[key])
+                    if dl_path:
+                        return [dl_path]
+            
+            # 如果没匹配到优先级 Key，但有唯一链接，也试一下
+            if len(urls) == 1:
+                url = list(urls.values())[0]
+                dl_path = await self.download_from_url(url)
+                if dl_path:
+                    return [dl_path]
+
+        logger.warning(f"Bot {target_bot} did not return any media or valid download links.")
         return None
 
 telegram_service = TelegramService()

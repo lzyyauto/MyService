@@ -38,10 +38,7 @@ class Settings(BaseSettings):
 
     # 视频处理配置
     FFMPEG_PATH: str = "ffmpeg"  # ffmpeg可执行文件路径
-    VIDEO_PROCESSING_TEMP_DIR: str = "temp/video/"  # 视频处理临时目录
-
-    # 第三方抖音API服务配置
-    THIRD_PARTY_DOUYIN_API_URL: str = "http://localhost:8088/api/hybrid/video_data"  # 第三方抖音视频API服务地址
+    MEDIA_URL_PREFIX: str = "/downloads"  # 媒体文件访问前缀
 
     # AI服务配置
     AI_PROVIDER: str = "siliconflow"  # AI服务提供商：siliconflow, openai
@@ -55,6 +52,8 @@ class Settings(BaseSettings):
     TG_API_HASH: Optional[str] = None
     TG_SESSION: Optional[str] = None
     TG_DOWNLOAD_PATH: str = "temp/telegram_downloads/"
+    TG_DOUYIN_BOT: str = "@DouYintg_bot"
+    TG_X_BOT: str = "@xx_video_download_bot"
 
     @property
     def DATABASE_URL(self) -> str:
