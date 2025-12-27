@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None  # OpenAI API密钥
     AI_VOICE_MODEL: str = "FunAudioLLM/SenseVoiceSmall"  # 语音识别模型（硅基AI推荐）
     AI_SUMMARY_MODEL: str = "Qwen/QwQ-32B"  # 文本总结模型
+    
+    # Telegram 配置
+    TG_API_ID: Optional[int] = None
+    TG_API_HASH: Optional[str] = None
+    TG_SESSION: Optional[str] = None
+    TG_DOWNLOAD_PATH: str = "temp/telegram_downloads/"
 
     @property
     def DATABASE_URL(self) -> str:

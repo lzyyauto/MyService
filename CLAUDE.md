@@ -1,143 +1,143 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+这个文件为 Claude Code (claude.ai/code) 在处理此代码库时提供指导。
 
-## 🎯 Project Overview
+## 🎯 项目概述
 
-**Z收集系统 (Z Collection System)** - A FastAPI-based RESTful API system for collecting and managing user data.
+**Z收集系统 (Z Collection System)** - 基于 FastAPI 的 RESTful API 系统，用于收集和管理用户数据。
 
-**Primary Features:**
-- **Rest Health Management**: Sleep/wake time tracking with Notion sync
-- **GTD Task Management**: Task creation with Todo/In Progress/Completed/Cancelled states
-- **Video Processing**: Douyin video parsing, download, audio extraction, speech-to-text, and AI summarization
-- **Notifications**: Bark push notifications for alerts
+**主要功能：**
+- **休息健康管理**：睡眠/起床时间跟踪，支持与 Notion 同步
+- **GTD 任务管理**：任务创建，包含待办/进行中/已完成/已取消状态
+- **视频处理**：抖音视频解析、下载、音频提取、语音转文字和 AI 摘要
+- **通知**：Bark 推送通知提醒
 
-## 🏗 Architecture
+## 🏗 架构设计
 
-### Core Stack
-- **Backend**: FastAPI 0.104.1 with async support
-- **Database**: PostgreSQL + SQLAlchemy 2.0 + Alembic migrations
-- **Auth**: JWT (python-jose) + bcrypt
-- **Validation**: Pydantic 2.5.2
+### 核心技术栈
+- **后端**：FastAPI 0.104.1，支持异步
+- **数据库**：PostgreSQL + SQLAlchemy 2.0 + Alembic 迁移
+- **认证**：JWT (python-jose) + bcrypt
+- **验证**：Pydantic 2.5.2
 
-### Directory Structure
+### 目录结构
 ```
 app/
-├── api/v1/endpoints/      # API routing
-│   ├── rest_records.py    # Sleep/wake records
-│   ├── gtd.py            # GTD tasks
-│   └── video_process.py  # Video processing (3 endpoints)
-├── core/                 # Core modules
-│   ├── config.py         # Settings (loads from .env)
-│   ├── security.py       # JWT authentication
-│   └── services/         # External integrations
-│       ├── bark_service.py     # Bark notifications
-│       ├── notion_service.py   # Notion API sync
-│       └── video_processor_service.py  # Video processing with parse logging
-├── db/                   # Database
-│   ├── session.py        # DB session manager
-│   └── init_db.py        # DB initialization
-├── models/               # SQLAlchemy models
-│   ├── user.py          # User model
-│   ├── rest_record.py   # Sleep/wake records
-│   ├── gtd_task.py      # GTD tasks
-│   └── video_process_task.py  # Video tasks (has task_type field)
-├── schemas/              # Pydantic schemas for validation
-└── utils/                # Utilities
-    └── ai_client.py     # AI service clients (SiliconFlow/OpenAI)
+├── api/v1/endpoints/      # API 路由
+│   ├── rest_records.py    # 睡眠/起床记录
+│   ├── gtd.py            # GTD 任务
+│   └── video_process.py  # 视频处理（3个端点）
+├── core/                 # 核心模块
+│   ├── config.py         # 设置（从 .env 加载）
+│   ├── security.py       # JWT 认证
+│   └── services/         # 外部集成
+│       ├── bark_service.py     # Bark 通知
+│       ├── notion_service.py   # Notion API 同步
+│       └── video_processor_service.py  # 视频处理与解析日志
+├── db/                   # 数据库
+│   ├── session.py        # 数据库会话管理
+│   └── init_db.py        # 数据库初始化
+├── models/               # SQLAlchemy 模型
+│   ├── user.py          # 用户模型
+│   ├── rest_record.py   # 睡眠/起床记录
+│   ├── gtd_task.py      # GTD 任务
+│   └── video_process_task.py  # 视频任务（包含 task_type 字段）
+├── schemas/              # Pydantic 验证模式
+└── utils/                # 工具
+    └── ai_client.py     # AI 服务客户端（SiliconFlow/OpenAI）
 
 alembic/
-└── versions/             # Database migrations
+└── versions/             # 数据库迁移
 ```
 
-## 🚀 Common Commands
+## 🚀 常用命令
 
-### Development
+### 开发
 ```bash
-# Install dependencies
+# 安装依赖
 pip install -r requirements.txt
 
-# Run development server
+# 运行开发服务器
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Run with Docker
+# 使用 Docker 运行
 docker-compose up -d
 
-# View API docs
+# 查看 API 文档
 open http://localhost:8000/docs
 ```
 
-### Database
+### 数据库
 ```bash
-# Run migrations
+# 运行迁移
 alembic upgrade head
 
-# Create new migration
-alembic revision --autogenerate -m "Description"
+# 创建新迁移
+alembic revision --autogenerate -m "描述"
 
-# View migration history
+# 查看迁移历史
 alembic history
 ```
 
-### Configuration
+### 配置
 ```bash
-# Copy environment template
+# 复制环境模板
 cp .env.example .env
 
-# Edit configuration
-# - Database: POSTGRES_HOST, USER, PASSWORD, DB
-# - Notion: NOTION_TOKEN, *_DATABASE_ID
-# - Bark: BARK_DEFAULT_DEVICE_KEY
-# - AI: AI_PROVIDER (siliconflow/openai), SILICONFLOW_API_KEY
-# - Video: THIRD_PARTY_DOUYIN_API_URL, FFMPEG_PATH
+# 编辑配置
+# - 数据库：POSTGRES_HOST, USER, PASSWORD, DB
+# - Notion：NOTION_TOKEN, *_DATABASE_ID
+# - Bark：BARK_DEFAULT_DEVICE_KEY
+# - AI：AI_PROVIDER (siliconflow/openai), SILICONFLOW_API_KEY
+# - 视频：THIRD_PARTY_DOUYIN_API_URL, FFMPEG_PATH
 ```
 
-## 🔌 API Endpoints
+## 🔌 API 端点
 
-### Authentication
-All endpoints require JWT token in header:
+### 认证
+所有端点都需要在请求头中携带 JWT 令牌：
 ```
 Authorization: Bearer <token>
 ```
 
-### Core Modules
-**1. Rest Records** (`/api/v1/rest-records`)
-- `POST /` - Create sleep/wake record
-- `GET /` - List records
+### 核心模块
+**1. 休息记录** (`/api/v1/rest-records`)
+- `POST /` - 创建睡眠/起床记录
+- `GET /` - 列出记录
 
-**2. GTD Tasks** (`/api/v1/gtd-tasks`)
-- `POST /` - Create task
-- `GET /` - List tasks
+**2. GTD 任务** (`/api/v1/gtd-tasks`)
+- `POST /` - 创建任务
+- `GET /` - 列出任务
 
-**3. Video Processing** (`/api/v1/video-process`)
-- `POST /` - Submit full video processing task (download → audio → ASR → AI summary)
-- `GET /{task_id}` - Query task status/result
-- `POST /parse-url` - Parse URL only (returns download links, supports video/image/Live Photo)
+**3. 视频处理** (`/api/v1/video-process`)
+- `POST /` - 提交完整视频处理任务（下载 → 音频 → ASR → AI 摘要）
+- `GET /{task_id}` - 查询任务状态/结果
+- `POST /parse-url` - 仅解析 URL（返回下载链接，支持视频/图片/实况照片）
 
-### Video Processing Details
-- **Full Process**: Async task with 4 steps (video download, audio extraction, speech-to-text, AI summary)
-- **Parse URL Only**: Quick parsing for download links (no processing)
-- **Task Type**: Distinguishes between "process" and "parse" tasks via `task_type` field
-- **Storage**: Results saved in database, files in `temp/video/` directory
-- **Dependencies**: Requires ffmpeg and third-party Douyin API service
+### 视频处理详情
+- **完整处理**：异步任务包含 4 个步骤（视频下载、音频提取、语音转文字、AI 摘要）
+- **仅解析 URL**：快速解析获取下载链接（不做处理）
+- **任务类型**：通过 `task_type` 字段区分"处理"和"解析"任务
+- **存储**：结果保存在数据库，文件存储在 `temp/video/` 目录
+- **依赖**：需要 ffmpeg 和第三方抖音 API 服务
 
-## ⚙️ Configuration
+## ⚙️ 配置
 
-### Environment Variables (.env)
+### 环境变量 (.env)
 ```env
-# Core
+# 核心
 APP_NAME=rest-data-collector
 DEBUG=True/False
 ENVIRONMENT=development/production
 
-# Database
+# 数据库
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=myservice
-POSTGRES_HOST=localhost  # or 'db' for Docker
+POSTGRES_HOST=localhost  # Docker 环境下用 'db'
 POSTGRES_PORT=5432
 
-# External Services
+# 外部服务
 NOTION_TOKEN=secret_xxx
 NOTION_SLEEP_DATABASE_ID=xxx
 NOTION_WAKE_DATABASE_ID=xxx
@@ -146,75 +146,83 @@ NOTION_GTD_DATABASE_ID=xxx
 BARK_BASE_URL=https://api.day.app
 BARK_DEFAULT_DEVICE_KEY=xxx
 
-# AI Services
-AI_PROVIDER=siliconflow  # or openai
+# AI 服务
+AI_PROVIDER=siliconflow  # 或 openai
 SILICONFLOW_API_KEY=sk-xxx
 AI_VOICE_MODEL=FunAudioLLM/SenseVoiceSmall
 AI_SUMMARY_MODEL=Qwen/QwQ-32B
 
-# Video Processing
+# 视频处理
 THIRD_PARTY_DOUYIN_API_URL=http://localhost:8088/api/hybrid/video_data
 FFMPEG_PATH=/opt/homebrew/bin/ffmpeg
 VIDEO_PROCESSING_TEMP_DIR=temp/video/
 ```
 
-### Third-Party Dependencies
-- **Douyin API**: External service at `THIRD_PARTY_DOUYIN_API_URL` for video parsing
-- **ffmpeg**: Required for audio extraction (must be installed on system)
-- **Notion API**: For optional data synchronization
-- **Bark**: For push notifications
-- **AI Services**: SiliconFlow (recommended) or OpenAI for speech-to-text and summarization
+### 第三方依赖
+- **抖音 API**：在 `THIRD_PARTY_DOUYIN_API_URL` 的外部服务，用于视频解析
+- **ffmpeg**：系统必须安装，用于音频提取
+- **Notion API**：可选的数据同步
+- **Bark**：推送通知
+- **AI 服务**：SiliconFlow（推荐）或 OpenAI，用于语音转文字和摘要
 
-## 🗄 Database Schema
+## 🗄 数据库模式
 
-### Key Models
-- **User**: JWT-authenticated users
-- **RestRecord**: Sleep/wake time entries (Notion sync)
-- **GtdTask**: GTD task management
-- **VideoProcessTask**: Video processing tasks with fields:
-  - `task_type`: "process" (full processing) or "parse" (URL only)
-  - `media_type`: "video", "image", or "live_photo"
-  - `aweme_id`, `desc`, `author`: Parse metadata
-  - `download_urls`: List of download links
-  - `video_path`, `audio_path`: File paths
-  - `subtitle_text`, `ai_summary`: Processing results
+### 关键模型
+- **User**：JWT 认证用户
+- **RestRecord**：睡眠/起床时间记录（Notion 同步）
+- **GtdTask**：GTD 任务管理
+- **VideoProcessTask**：视频处理任务，包含字段：
+  - `task_type`："process"（完整处理）或 "parse"（仅解析 URL）
+  - `media_type`："video"、"image" 或 "live_photo"
+  - `aweme_id`、`desc`、`author`：解析元数据
+  - `download_urls`：下载链接列表
+  - `video_path`、`audio_path`：文件路径
+  - `subtitle_text`、`ai_summary`：处理结果
 
-### Migrations
-Located in `alembic/versions/`. Recent migrations added task_type and parse fields for logging parse-url access.
+### 迁移
+位于 `alembic/versions/`。最近的迁移添加了 task_type 和解析字段，用于记录解析 URL 访问。
 
-## 🔐 Security
+## 🔐 安全
 
-- JWT token authentication for all endpoints
-- User-scoped data access (users can only access their own records/tasks)
-- Password hashing with bcrypt
-- Environment-based configuration for secrets
-- CORS enabled for all origins (development setting)
+- 所有端点需要 JWT 令牌认证
+- 用户级数据访问（用户只能访问自己的记录/任务）
+- 密码使用 bcrypt 哈希
+- 基于环境的密钥配置
+- 开发环境开启所有源的 CORS
 
-## 📝 Development Notes
+## 📝 开发说明
 
-- **Project recently cleaned**: Documentation, test files, and temp directories removed
-- **Video processing service**: Implements both full processing and parse-only URL functionality
-- **Background tasks**: Uses FastAPI BackgroundTasks for async video processing
-- **Logging**: Configured in `app/main.py` (app/main.py:12-21)
-- **Parse URL logging**: Records parse accesses in database (app/core/services/video_processor_service.py)
+- **项目最近清理**：文档、测试文件和临时目录已移除
+- **视频处理服务**：实现完整处理和仅解析 URL 功能
+- **后台任务**：使用 FastAPI BackgroundTasks 进行异步视频处理
+- **日志**：在 `app/main.py` (app/main.py:12-21) 配置
+- **解析 URL 日志**：在数据库中记录解析访问 (app/core/services/video_processor_service.py)
 
-## 🐛 Common Issues
+## 🐛 常见问题
 
-1. **Database connection**: Ensure PostgreSQL is running and .env configured correctly
-2. **ffmpeg not found**: Install ffmpeg and set FFMPEG_PATH in .env
-3. **Third-party API down**: Video processing requires external Douyin API service
-4. **AI API errors**: Check SILICONFLOW_API_KEY or OPENAI_API_KEY configuration
-5. **Migration conflicts**: Reset with `alembic downgrade base && alembic upgrade head`
+1. **数据库连接**：确保 PostgreSQL 运行且 .env 配置正确
+2. **找不到 ffmpeg**：安装 ffmpeg 并在 .env 中设置 FFMPEG_PATH
+3. **第三方 API 宕机**：视频处理需要外部抖音 API 服务
+4. **AI API 错误**：检查 SILICONFLOW_API_KEY 或 OPENAI_API_KEY 配置
+5. **迁移冲突**：用 `alembic downgrade base && alembic upgrade head` 重置
 
-## 📦 Dependencies
+## 📦 依赖
 
-Key packages from `requirements.txt`:
-- fastapi, uvicorn - Web framework
-- sqlalchemy, psycopg2-binary - ORM and PostgreSQL driver
-- alembic - Database migrations
-- pydantic, pydantic-settings - Validation and config
-- python-jose, passlib - JWT and password hashing
-- notion-client - Notion API integration
-- aiohttp, requests - HTTP clients
-- tenacity - Retry mechanism
-- pytest* - Testing (optional, tests removed)
+`requirements.txt` 中的关键包：
+- fastapi, uvicorn - Web 框架
+- sqlalchemy, psycopg2-binary - ORM 和 PostgreSQL 驱动
+- alembic - 数据库迁移
+- pydantic, pydantic-settings - 验证和配置
+- python-jose, passlib - JWT 和密码哈希
+- notion-client - Notion API 集成
+- aiohttp, requests - HTTP 客户端
+- tenacity - 重试机制
+- pytest* - 测试（可选，测试已移除）
+
+
+## 规则
+1. 全程使用中文与我沟通
+2. 生成的相关文档都存放与docs/文件夹下,非特定名称框架单词之外,文档全部以中文.
+3. 针对新的需求,在docs/下创建对应的需求文件夹,相关文档存储在此.
+4. 需求设计流程参考 docs/SETP.md 原则
+5. 当需求完成之后,更新此文档(CLAUDE.md),保证其信息准确性

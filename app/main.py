@@ -4,9 +4,11 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import gtd, rest_records, video_process
+from app.api.v1.endpoints import gtd, rest_records, video_process, telegram
 from app.core.config import settings
 from app.db.init_db import init_db
+from app.services.telegram_service import telegram_service
+from fastapi.openapi.docs import get_swagger_ui_html
 
 
 def setup_logging():
@@ -27,8 +29,11 @@ async def lifespan(app: FastAPI):
     setup_logging()
     # 启动时初始化数据库
     init_db()
+    # 启动 Telegram 客户端
+    await telegram_service.start()
     yield
-    # 关闭时的清理工作（如果需要）
+    # 关闭时的清理工作
+    await telegram_service.stop()
 
 
 app = FastAPI(
@@ -37,14 +42,20 @@ app = FastAPI(
     "用于收集和管理用户休息数据的 API 系统\n\n认证方式：在请求头中添加 `Authorization: Bearer <token>`",
     version="1.0.0",
     openapi_url="/api/v1/openapi.json",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    swagger_ui_parameters={
-        "displayRequestDuration": True,
-        "docExpansion": "none",
-    },
     lifespan=lifespan,
+    docs_url=None,  # 禁用默认 docs_url 以便手动重构
 )
+
+# 覆盖默认的 Swagger UI 路由，使用更稳定的 CDN
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Docs",
+        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+        swagger_js_url="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/swagger-ui/4.15.5/swagger-ui-bundle.js",
+        swagger_css_url="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/swagger-ui/4.15.5/swagger-ui.min.css",
+    )
 
 # 添加接口分组说明
 app.openapi_tags = [{
@@ -56,6 +67,9 @@ app.openapi_tags = [{
 }, {
     "name": "视频处理",
     "description": "视频下载、音频提取、语音识别、AI总结",
+}, {
+    "name": "Telegram 下载",
+    "description": "通过 Telegram Bots 下载抖音、Twitter 视频",
 }]
 
 # 配置CORS
@@ -84,6 +98,12 @@ app.include_router(
     video_process.router,
     prefix="/api/v1/video-process",
     tags=["视频处理"],
+)
+
+app.include_router(
+    telegram.router,
+    prefix="/api/v1/telegram",
+    tags=["Telegram 下载"],
 )
 
 
