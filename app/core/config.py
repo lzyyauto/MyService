@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     APP_NAME: str
     DEBUG: bool
     ENVIRONMENT: str
+    ENABLE_TG_SERVICE: bool = True
 
     # 数据库配置
     POSTGRES_USER: str

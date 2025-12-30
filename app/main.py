@@ -31,11 +31,15 @@ async def lifespan(app: FastAPI):
     setup_logging()
     # 启动时初始化数据库
     init_db()
-    # 启动 Telegram 客户端
-    await telegram_service.start()
+    # 根据配置启动 Telegram 客户端
+    if settings.ENABLE_TG_SERVICE:
+        await telegram_service.start()
+    else:
+        logging.info("Telegram service is disabled by configuration.")
     yield
     # 关闭时的清理工作
-    await telegram_service.stop()
+    if settings.ENABLE_TG_SERVICE:
+        await telegram_service.stop()
 
 
 app = FastAPI(
@@ -55,8 +59,8 @@ async def custom_swagger_ui_html():
         openapi_url=app.openapi_url,
         title=app.title + " - Docs",
         oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
-        swagger_js_url="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/swagger-ui/4.15.5/swagger-ui-bundle.js",
-        swagger_css_url="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/swagger-ui/4.15.5/swagger-ui.min.css",
+        swagger_js_url="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js",
+        swagger_css_url="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css",
     )
 
 # 添加接口分组说明

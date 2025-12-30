@@ -13,7 +13,7 @@ def to_cn_timezone(timestamp: int) -> datetime:
 
 
 class RestRecordBase(BaseModel):
-    rest_type: int = Field(0,
+    rest_type: Optional[int] = Field(None,
                            ge=0,
                            le=1,
                            description="休息类型：0-睡眠，1-起床",
@@ -73,3 +73,76 @@ class RestRecord(RestRecordInDB):
     class Config:
         from_attributes = True
         json_encoders = {datetime: lambda dt: dt.strftime('%Y-%m-%d %H:%M:%S')}
+
+
+class AnnualOverview(BaseModel):
+    year: str
+    total_days_logged: int
+    distinct_cities_count: int
+    distinct_wake_cities_count: int
+    avg_sleep_time: str  # 格式 HH:MM
+    avg_wake_time: str   # 格式 HH:MM
+    avg_duration_hrs: float
+
+
+class AnnualExtreme(BaseModel):
+    date: str
+    value: str
+    description: str
+
+
+class AnnualExtremes(BaseModel):
+    latest_sleep: AnnualExtreme
+    earliest_wake: AnnualExtreme
+    longest_sleep: AnnualExtreme
+    shortest_sleep: AnnualExtreme
+
+
+class ConsistencyStats(BaseModel):
+    max_streak: int
+    consistency_score: int  # 0-100
+    remark: str
+
+
+class SpatialStat(BaseModel):
+    name: str
+    count: int
+    type: str  # 'city' or 'wifi'
+
+
+class MonthlyStat(BaseModel):
+    month: str
+    avg_duration: float
+    record_count: int
+
+
+class DataIntegrity(BaseModel):
+    missing_sleep_dates: list[str]
+    missing_wake_dates: list[str]
+    total_missing_count: int
+
+
+class AnnualSummaryResponse(BaseModel):
+    overview: AnnualOverview
+    extremes: AnnualExtremes
+    consistency: ConsistencyStats
+    spatial: list[SpatialStat]
+    monthly_trends: list[MonthlyStat]
+    data_integrity: DataIntegrity
+    persona_tags: list[str]
+    summary_text: str
+
+
+class AnnualSummaryTableRecord(BaseModel):
+    date: str
+    sleep_time: Optional[str] = None
+    wake_time: Optional[str] = None
+    duration: Optional[float] = None
+    city: Optional[str] = None
+    wifi: Optional[str] = None
+
+
+class AnnualSummaryTableResponse(BaseModel):
+    year: str
+    count: int
+    records: list[AnnualSummaryTableRecord]
