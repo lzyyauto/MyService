@@ -160,9 +160,10 @@ async def get_annual_summary_table(
     current_user: User = Depends(get_current_user)
 ) -> AnnualSummaryTableResponse:
     # 复用统计算法中的配对逻辑
-    from datetime import date, timedelta
-    start_ts = int(datetime.strptime(f"{year}-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").timestamp())
-    end_ts = int(datetime.strptime(f"{year}-12-31 23:59:59", "%Y-%m-%d %H:%M:%S").timestamp())
+    from datetime import date, timedelta, timezone
+    tz_cn = timezone(timedelta(hours=8))
+    start_ts = int(datetime.strptime(f"{year}-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz_cn).timestamp())
+    end_ts = int(datetime.strptime(f"{year}-12-31 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz_cn).timestamp())
     records = db.query(RestRecordModel).filter(
         RestRecordModel.user_id == current_user.id,
         RestRecordModel.rest_time >= start_ts,
@@ -242,10 +243,11 @@ async def get_annual_summary(
 ) -> AnnualSummaryResponse:
     import statistics
     from collections import Counter
-    from datetime import date, timedelta
+    from datetime import date, timedelta, timezone
+    tz_cn = timezone(timedelta(hours=8))
 
-    start_ts = int(datetime.strptime(f"{year}-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").timestamp())
-    end_ts = int(datetime.strptime(f"{year}-12-31 23:59:59", "%Y-%m-%d %H:%M:%S").timestamp())
+    start_ts = int(datetime.strptime(f"{year}-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz_cn).timestamp())
+    end_ts = int(datetime.strptime(f"{year}-12-31 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz_cn).timestamp())
 
     records = db.query(RestRecordModel).filter(
         RestRecordModel.user_id == current_user.id,
