@@ -1,3 +1,5 @@
+"""已废弃：Telegram Schema 仅供历史代码兼容。"""
+
 from typing import Optional, List
 from pydantic import BaseModel, Field
 

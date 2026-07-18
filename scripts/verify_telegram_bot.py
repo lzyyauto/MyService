@@ -1,3 +1,5 @@
+"""已废弃：Telegram 人工诊断脚本，不属于当前睡眠记录系统。"""
+
 import asyncio
 import logging
 import os

@@ -1,3 +1,5 @@
+"""已废弃：仅在人工恢复旧 Telegram 功能时用于生成 Session。"""
+
 import asyncio
 import os
 from telethon import TelegramClient

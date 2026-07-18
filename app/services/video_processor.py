@@ -1,7 +1,5 @@
 """
-视频处理服务
-整合视频下载、音频提取、语音识别、AI总结等全部功能
-完全迁移至 Telegram 下载引擎，废弃第三方 API 服务
+已废弃：视频处理服务仅为历史兼容保留，主应用禁止调用。
 """
 
 import asyncio
@@ -21,6 +19,7 @@ from app.models.video_process_task import VideoProcessTask
 from app.services.telegram import telegram_service
 
 logger = logging.getLogger(__name__)
+DEPRECATED_NOTICE = "视频处理功能已废弃，禁止接入主应用"
 
 
 class VideoProcessorService:

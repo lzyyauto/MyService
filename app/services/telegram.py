@@ -1,3 +1,5 @@
+"""已废弃：Telegram 下载实现仅为历史兼容保留，主应用禁止调用。"""
+
 import os
 import asyncio
 import logging
@@ -7,6 +9,7 @@ from telethon import TelegramClient, events
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+DEPRECATED_NOTICE = "Telegram 下载功能已废弃，禁止接入主应用"
 
 class TelegramService:
     def __init__(self):

@@ -193,7 +193,7 @@ class NotionService:
     async def add_gtd_task(self, database_id: str,
                            task: Dict[str, Any]) -> Optional[str]:
         """
-        添加 GTD 任务到 Notion 数据库
+        已废弃：原 GTD 同步能力，仅为历史代码兼容保留。
         
         Args:
             database_id: 数据库 ID

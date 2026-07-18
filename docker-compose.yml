@@ -24,6 +24,22 @@ services:
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
     # 生产环境建议去掉 --reload
 
+  feishu-inspiration:
+    profiles:
+      - inspiration
+    build: .
+    image: lzyyauto/myservice:latest
+    container_name: FeishuInspiration
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - INSPIRATION_DOC_PATH=/app/data/inspirations.md
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    command: python -m app.workers.feishu_inspiration
+
   db:
     image: postgres:15
     container_name: Postgres

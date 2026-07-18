@@ -1,5 +1,5 @@
 """
-视频处理任务数据库模型
+已废弃：视频任务模型仅用于兼容既有数据库和历史迁移。
 """
 
 import uuid
@@ -10,7 +10,7 @@ from app.db.base_class import Base
 
 
 class VideoProcessTask(Base):
-    """视频处理任务模型"""
+    """已废弃，不得用于新增业务。"""
 
     __tablename__ = "video_process_tasks"
 

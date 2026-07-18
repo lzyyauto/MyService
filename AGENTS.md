@@ -1,240 +1,163 @@
 # AGENTS.md
 
-这个文件为 Codex (Codex.ai/code) 在处理此代码库时提供指导。
+这个文件为 Codex 在处理此代码库时提供指导。
 
-## 🎯 项目概述
+## 项目概述
 
-**Z收集系统 (Z Collection System)** - 基于 FastAPI 的 RESTful API 系统，用于收集和管理用户数据。
+**Z 收集系统**用于收集和整理个人数据，由 FastAPI API 与独立 worker 组成。
 
-**主要功能：**
-- **休息健康管理**：睡眠/起床时间跟踪，支持与 Notion 同步
-- **GTD 任务管理**：任务创建，包含待办/进行中/已完成/已取消状态
-- **视频处理**：抖音视频解析、下载、音频提取、语音转文字和 AI 摘要
-- **通知**：Bark 推送通知提醒
+当前有效业务范围：
 
-## 🏗 架构设计
+- 记录睡眠和起床时间；
+- 保存 WiFi、经纬度和城市等可选位置数据；
+- 查询记录并生成年度总结、年度明细；
+- 可选同步 Notion，并在同步失败时通过 Bark 提醒。
+- 通过独立飞书 WebSocket worker 接收文本灵感，保存为 Markdown 并添加回执。
 
-### 核心技术栈
-- **后端**：FastAPI 0.104.1，支持异步
-- **数据库**：PostgreSQL + SQLAlchemy 2.0 + Alembic 迁移
-- **认证**：数据库 API Key，通过 HTTP Bearer 头传递
-- **验证**：Pydantic 2.5.2
+GTD、Telegram 下载、视频处理和相关 AI 能力已于 2026-07-19 废弃。代码、模型和
+历史迁移暂时保留用于兼容，但主应用不得导入、注册或调用这些功能。
 
-### 目录结构
-```
+飞书灵感采集来自 `daily-claw`，属于新的有效功能，不等同于已废弃的 Telegram
+下载功能。原项目没有实现 AI 文档整理；后续实现前不得把现有废弃 `ai_client.py`
+当作灵感整理能力重新启用。
+
+## 技术栈
+
+- Python 3.11
+- FastAPI 0.104.1
+- PostgreSQL + SQLAlchemy 2.0 + Alembic
+- Pydantic 2.5.2
+- HTTP Bearer + 数据库 API Key
+- uv 依赖与虚拟环境管理
+
+## 目录结构
+
+```text
 app/
-├── api/v1/endpoints/      # API 路由
-│   ├── rest_records.py    # 睡眠/起床记录
-│   ├── gtd.py            # GTD 任务
-│   └── video_process.py  # 视频处理（3个端点）
-├── core/                 # 核心模块
-│   ├── config.py         # 设置（从 .env 加载）
-│   └── security.py       # Bearer API Key 认证
-├── db/                   # 数据库
-│   ├── session.py        # 数据库会话管理
-│   └── init_db.py        # 数据库初始化
-├── models/               # SQLAlchemy 模型
-│   ├── user.py          # 用户模型
-│   ├── rest_record.py   # 睡眠/起床记录
-│   ├── gtd_task.py      # GTD 任务
-│   └── video_process_task.py  # 视频任务（包含 task_type 字段）
-├── schemas/              # Pydantic 验证模式
-├── services/             # 业务服务与外部集成
-│   ├── bark.py           # Bark 通知
-│   ├── notion.py         # Notion API 同步
-│   ├── telegram.py       # Telegram 下载
-│   └── video_processor.py # 视频处理
-└── utils/                # 工具
-    └── ai_client.py     # AI 服务客户端（SiliconFlow/OpenAI）
-
-alembic/
-└── versions/             # 数据库迁移
+├── api/v1/endpoints/
+│   ├── rest_records.py   # 当前唯一业务 API
+│   ├── gtd.py            # 已废弃，禁止注册
+│   ├── telegram.py       # 已废弃，禁止注册
+│   └── video_process.py  # 已废弃，禁止注册
+├── core/                 # 配置、安全、废弃路由保护
+├── db/                   # 数据库引擎、会话和初始化
+├── models/               # 当前模型及兼容保留模型
+├── schemas/              # 当前 Schema 及兼容保留 Schema
+├── services/
+│   ├── bark.py           # 睡眠同步失败提醒；含少量废弃兼容方法
+│   ├── inspiration.py    # 飞书灵感解析、去重、落盘和回执
+│   ├── notion.py         # 睡眠 Notion 同步；含废弃 GTD 方法
+│   ├── telegram.py       # 已废弃
+│   └── video_processor.py # 已废弃
+└── utils/
+    └── ai_client.py      # 已废弃
+app/workers/
+└── feishu_inspiration.py # 飞书长连接独立进程入口
+alembic/                  # 历史迁移，不得因功能废弃而改写
+tests/                    # 自动化测试
+docs/                     # 中文需求与设计文档
 ```
 
-## 🚀 常用命令
+## 常用命令
 
-### 开发
 ```bash
-# 同步锁定依赖并创建/更新根目录 .venv
+# 创建或同步根目录 .venv
 uv sync --locked
 
-# 运行开发服务器
+# 运行服务
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 使用 Docker 运行
-docker compose up --build -d
+# 运行飞书灵感采集 worker
+uv run python -m app.workers.feishu_inspiration
 
-# 查看 API 文档
-open http://localhost:8000/docs
+# 测试与检查
+uv run pytest -q
+uv run python -m compileall -q app alembic scripts tests
+uv run alembic heads
+
+# Docker
+docker compose up --build -d
+docker compose --profile inspiration up --build -d
 ```
 
-### 数据库
+数据库命令：
+
 ```bash
-# 运行迁移
 uv run alembic upgrade head
-
-# 创建新迁移
 uv run alembic revision --autogenerate -m "描述"
-
-# 查看迁移历史
 uv run alembic history
 ```
 
-### 配置
-```bash
-# 复制环境模板
-cp .env.example .env
+## 依赖管理
 
-# 编辑配置
-# - 数据库：POSTGRES_HOST, USER, PASSWORD, DB
-# - Notion：NOTION_TOKEN, *_DATABASE_ID
-# - Bark：BARK_DEFAULT_DEVICE_KEY
-# - AI：AI_PROVIDER (siliconflow/openai), SILICONFLOW_API_KEY
-# - 视频：FFMPEG_PATH, TG_API_ID, TG_API_HASH, TG_SESSION
+- 直接生产依赖维护在 `pyproject.toml` 的 `[project.dependencies]`。
+- 测试依赖位于 `dev` 组，默认随本地 `uv sync` 安装。
+- 废弃功能依赖位于 `legacy` 组，默认和 Docker 均不安装。
+- `lark-oapi` 和 `requests` 是飞书灵感采集所需的有效生产依赖。
+- 只有人工审查历史代码时才可执行 `uv sync --group legacy`；这不会重新启用接口。
+- `uv.lock` 必须提交，`.venv/` 必须保持忽略。
+
+## 当前 API
+
+所有业务端点都需要：
+
+```text
+Authorization: Bearer <api-key>
 ```
 
-## 🔌 API 端点
+FastAPI 仅开放：
 
-### 认证
-除根路径和 API 文档外，业务端点都需要在请求头中携带 API Key：
-```
-Authorization: Bearer <token>
-```
+- `POST /api/v1/rest-records/`
+- `GET /api/v1/rest-records/`
+- `GET /api/v1/rest-records/annual-summary/{year}`
+- `GET /api/v1/rest-records/annual-summary/{year}/table`
 
-### 核心模块
-**1. 休息记录** (`/api/v1/rest-records`)
-- `POST /` - 创建睡眠/起床记录
-- `GET /` - 列出记录
-- `GET /annual-summary/{year}` - 年度总结
-- `GET /annual-summary/{year}/table` - 年度明细
+根路径和 API 文档不要求认证。
 
-**2. GTD 任务** (`/api/v1/gtd-tasks`)
-- `POST /` - 创建任务
+飞书灵感采集通过长连接接收事件，不注册 HTTP 路由。它必须作为独立进程运行，
+不得加入 FastAPI lifespan，以免 Uvicorn 重载或多进程造成重复连接。
 
-**3. 视频处理** (`/api/v1/video-process`)
-- `POST /` - 提交完整视频处理任务（下载 → 音频 → ASR → AI 摘要）
-- `GET /{task_id}` - 查询任务状态/结果
-- `POST /parse-url` - 仅解析 URL（返回下载链接，支持视频/图片/实况照片）
+## 废弃功能规则
 
-**4. Telegram 下载** (`/api/v1/telegram`)
-- `POST /download` - 后台下载抖音或 X/Twitter 媒体
+- `/api/v1/gtd-tasks`、`/api/v1/telegram`、`/api/v1/video-process` 不得注册，
+  正常请求结果应为 404。
+- `/downloads` 静态挂载已移除。
+- Telegram 客户端不得在应用生命周期中启动。
+- 废弃端点统一使用 `app.core.deprecation.create_disabled_router`；即使误注册也必须返回
+  `410 Gone`，不得执行原业务函数。
+- 保留 `GtdTask`、`VideoProcessTask` 和历史 Alembic 迁移，避免破坏既有数据库。
+- 不得在普通功能改造中删除旧表、改写已发布迁移或重新启用废弃入口。
 
-### 视频处理详情
-- **完整处理**：异步任务包含 4 个步骤（视频下载、音频提取、语音转文字、AI 摘要）
-- **仅解析 URL**：快速解析获取下载链接（不做处理）
-- **任务类型**：通过 `task_type` 字段区分"处理"和"解析"任务
-- **存储**：结果保存在数据库，文件默认存储在 `temp/telegram_downloads/`
-- **依赖**：需要 ffmpeg、Telegram API 凭据和可用的下载机器人
+完整决策见 `docs/睡眠单一职责改造/README.md`。
 
-## ⚙️ 配置
+## 配置
 
-### 环境变量 (.env)
-```env
-# 核心
-APP_NAME=rest-data-collector
-DEBUG=True/False
-ENVIRONMENT=development/production
+当前有效配置：
 
-# 数据库
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=myservice
-POSTGRES_HOST=localhost  # Docker 环境下用 'db'
-POSTGRES_PORT=5432
+- 应用：`APP_NAME`、`DEBUG`、`ENVIRONMENT`
+- 数据库：`POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB`、`POSTGRES_HOST`、`POSTGRES_PORT`
+- Notion：`NOTION_TOKEN`、`NOTION_SLEEP_DATABASE_ID`、`NOTION_WAKE_DATABASE_ID`
+- Bark：`BARK_BASE_URL`、`BARK_DEFAULT_DEVICE_KEY`
+- 飞书灵感：`FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_BASE_URL`、
+  `INSPIRATION_DOC_PATH`
+- 日志与 Docker 持久化配置
 
-# 外部服务
-NOTION_TOKEN=secret_xxx
-NOTION_SLEEP_DATABASE_ID=xxx
-NOTION_WAKE_DATABASE_ID=xxx
-NOTION_GTD_DATABASE_ID=xxx
+GTD、Telegram 下载、视频和旧 AI 配置字段仅在 `Settings` 中兼容旧 `.env`，
+主应用不得读取。
 
-BARK_BASE_URL=https://api.day.app
-BARK_DEFAULT_DEVICE_KEY=xxx
+灵感文件默认为 `data/inspirations.md`，`data/` 不纳入 Git，部署时必须持久化和备份。
+完整决策见 `docs/飞书灵感采集整合/README.md`。
 
-# AI 服务
-AI_PROVIDER=siliconflow  # 或 openai
-SILICONFLOW_API_KEY=sk-xxx
-AI_VOICE_MODEL=FunAudioLLM/SenseVoiceSmall
-AI_SUMMARY_MODEL=Qwen/QwQ-32B
+## 已知问题
 
-# 视频处理
-FFMPEG_PATH=/opt/homebrew/bin/ffmpeg
-TG_DOWNLOAD_PATH=temp/telegram_downloads/
-TG_API_ID=xxx
-TG_API_HASH=xxx
-TG_SESSION=xxx
-```
+1. Alembic 存在两个 head。先检查 `alembic current`，不得直接重置有数据的数据库。
+2. PostgreSQL `zrest` 存在 collation 版本提示，处理前必须备份并评估索引重建。
+3. 部分 Pydantic Schema 仍使用 v1 兼容写法，会产生弃用警告。
 
-### 第三方依赖
-- **Telegram API 与机器人**：用于解析和下载抖音、X/Twitter 媒体
-- **ffmpeg**：系统必须安装，用于音频提取
-- **Notion API**：可选的数据同步
-- **Bark**：推送通知
-- **AI 服务**：SiliconFlow（推荐）或 OpenAI，用于语音转文字和摘要
+## 协作规则
 
-## 🗄 数据库模式
-
-### 关键模型
-- **User**：持有唯一 API Key 的用户
-- **RestRecord**：睡眠/起床时间记录（Notion 同步）
-- **GtdTask**：GTD 任务管理
-- **VideoProcessTask**：视频处理任务，包含字段：
-  - `task_type`："process"（完整处理）或 "parse"（仅解析 URL）
-  - `media_type`："video"、"image" 或 "live_photo"
-  - `aweme_id`、`desc`、`author`：解析元数据
-  - `download_urls`：下载链接列表
-  - `video_path`、`audio_path`：文件路径
-  - `subtitle_text`、`ai_summary`：处理结果
-
-### 迁移
-位于 `alembic/versions/`。最近的迁移添加了 task_type 和解析字段，用于记录解析 URL 访问。
-
-## 🔐 安全
-
-- 所有业务端点需要数据库 API Key 认证
-- 用户级数据访问（用户只能访问自己的记录/任务）
-- 基于环境的密钥配置
-- 开发环境开启所有源的 CORS
-
-## 📝 开发说明
-
-- **项目最近整理**：服务、测试和脚本已按职责归位；无运行价值的旧样例已删除
-- **依赖管理**：统一使用 `pyproject.toml`、`uv.lock` 和项目根目录 `.venv/`；不再维护 requirements 文件
-- **常用命令**：优先使用 `uv sync --locked` 和 `uv run <命令>`；新增依赖使用 `uv add`
-- **视频处理服务**：实现完整处理和仅解析 URL 功能
-- **后台任务**：使用 FastAPI BackgroundTasks 进行异步视频处理
-- **日志**：在 `app/main.py` (app/main.py:12-21) 配置
-- **解析 URL 日志**：在数据库中记录解析访问 (`app/services/video_processor.py`)
-- **项目结构**：服务统一放在 `app/services/`；自动化测试放在 `tests/`；运行时媒体放在被忽略的 `temp/`
-- **整理记录**：结构决策、归档理由与已知迁移风险见 `docs/项目结构整理/README.md`
-
-## 🐛 常见问题
-
-1. **数据库连接**：确保 PostgreSQL 运行且 .env 配置正确
-2. **找不到 ffmpeg**：安装 ffmpeg 并在 .env 中设置 FFMPEG_PATH
-3. **Telegram 下载失败**：检查 API 凭据、Session、机器人可用性和网络
-4. **AI API 错误**：检查 SILICONFLOW_API_KEY 或 OPENAI_API_KEY 配置
-5. **迁移存在双 head**：先查看 `alembic current`，再按 `docs/项目结构整理/README.md` 的说明处理；不要直接重置有数据的数据库
-6. **数据库 collation 版本不一致**：先备份并评估索引重建，再按 PostgreSQL 提示刷新版本；不要在普通整理任务中直接修改
-
-## 📦 依赖
-
-`pyproject.toml` 中的关键包：
-- fastapi, uvicorn - Web 框架
-- sqlalchemy, psycopg2-binary - ORM 和 PostgreSQL 驱动
-- alembic - 数据库迁移
-- pydantic, pydantic-settings - 验证和配置
-- notion-client - Notion API 集成
-- aiohttp, httpx - HTTP 客户端
-- telethon - Telegram 客户端
-- pytest* - `dev` 依赖组
-
-`uv.lock` 必须提交，`.venv/` 必须保持忽略。Docker 只同步锁文件中的生产依赖。
-
-
-## 规则
-1. 全程使用中文与我沟通
-2. 生成的相关文档都存放与docs/文件夹下,非特定名称框架单词之外,文档全部以中文.
-3. 针对新的需求,在docs/下创建对应的需求文件夹,相关文档存储在此.
-4. 需求设计流程参考 docs/SETP.md 原则
-5. 当需求完成之后,更新此文档(AGENTS.md),保证其信息准确性
+1. 全程使用中文沟通。
+2. 新需求在 `docs/` 下创建对应的中文需求目录，文档统一存放其中。
+3. 需求设计流程遵循 `docs/SETP.md`。
+4. 完成需求后更新本文件，保证信息准确。
+5. 保留用户已有数据和无关改动；数据库与外部服务写入必须谨慎。

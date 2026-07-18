@@ -52,6 +52,7 @@ uv sync --locked --no-dev --no-install-project
 
 - 原 `requirements.txt` 的 12 个直接依赖迁入 `[project.dependencies]`。
 - pytest、pytest-asyncio、pytest-cov 迁入 `[dependency-groups].dev`。
+- 已废弃的 Telegram、视频处理依赖迁入非默认 `legacy` 组，生产环境不安装。
 - pytest 配置从 `pytest.ini` 迁入 `[tool.pytest.ini_options]`。
 - 删除 `requirements.txt`、`requirements-dev.txt` 和 `pytest.ini`。
 - Python 版本统一为 3.11，本地环境路径统一为 `.venv/`。
@@ -60,10 +61,10 @@ uv sync --locked --no-dev --no-install-project
 
 - 本机 uv 版本：`0.5.24`。
 - `uv lock --check` 与 `uv sync --locked`：通过。
-- 根目录 `.venv/`：使用 CPython 3.11.11，开发环境同步 43 个包。
-- `uv run pytest -q`：4 项测试通过；保留既有的 13 条 Pydantic 弃用警告。
-- 应用验证：全部模块、13 个路由和 4 张模型表注册通过。
+- 根目录 `.venv/`：使用 CPython 3.11.11。
+- `uv run pytest -q`：睡眠单一职责改造后为 6 项测试；保留既有的 13 条 Pydantic 弃用警告。
+- 应用验证：仅注册睡眠相关业务路由；废弃功能不进入主应用。
 - `uv pip check`：全部已安装包兼容。
-- 独立生产环境执行 `uv sync --locked --no-dev --no-install-project`：36 个生产包安装和核心导入通过，确认未安装 pytest。
+- 独立生产环境执行 `uv sync --locked --no-dev --no-install-project`：睡眠系统当前安装 32 个生产包，确认未安装 pytest 和 Telethon。
 - `docker compose config -q`：通过。
 - 本机 Docker/OrbStack 守护进程未运行，因此未执行真实镜像构建；Dockerfile 已按官方 uv 锁文件同步模式配置。

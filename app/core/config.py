@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     APP_NAME: str
     DEBUG: bool
     ENVIRONMENT: str
-    ENABLE_TG_SERVICE: bool = True
+    # 以下废弃功能开关仅为兼容旧配置保留，主应用不再读取。
+    ENABLE_TG_SERVICE: bool = False
 
     # 数据库配置
     POSTGRES_USER: str
@@ -37,18 +38,24 @@ class Settings(BaseSettings):
     BARK_BASE_URL: str = "https://api.day.app"
     BARK_DEFAULT_DEVICE_KEY: Optional[str] = None
 
-    # 视频处理配置
+    # 飞书灵感采集配置
+    FEISHU_APP_ID: Optional[str] = None
+    FEISHU_APP_SECRET: Optional[str] = None
+    FEISHU_BASE_URL: str = "https://open.feishu.cn"
+    INSPIRATION_DOC_PATH: str = "data/inspirations.md"
+
+    # 已废弃：视频处理配置，仅供保留代码导入。
     FFMPEG_PATH: str = "ffmpeg"  # ffmpeg可执行文件路径
     MEDIA_URL_PREFIX: str = "/downloads"  # 媒体文件访问前缀
 
-    # AI服务配置
+    # 已废弃：AI 服务配置，仅供保留代码导入。
     AI_PROVIDER: str = "siliconflow"  # AI服务提供商：siliconflow, openai
     SILICONFLOW_API_KEY: Optional[str] = None  # 硅基AI API密钥
     OPENAI_API_KEY: Optional[str] = None  # OpenAI API密钥
     AI_VOICE_MODEL: str = "FunAudioLLM/SenseVoiceSmall"  # 语音识别模型（硅基AI推荐）
     AI_SUMMARY_MODEL: str = "Qwen/QwQ-32B"  # 文本总结模型
     
-    # Telegram 配置
+    # 已废弃：Telegram 配置，仅供保留代码导入。
     TG_API_ID: Optional[int] = None
     TG_API_HASH: Optional[str] = None
     TG_SESSION: Optional[str] = None

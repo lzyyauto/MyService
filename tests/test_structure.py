@@ -1,6 +1,6 @@
 from app.db.base_class import Base
 
-# 导入模型包后，所有业务表都应注册到同一个 MetaData。
+# 兼容保留的 GTD、视频表也必须注册，避免 Alembic 误判为应删除旧表。
 import app.models  # noqa: F401, E402
 
 

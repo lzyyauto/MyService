@@ -1,11 +1,14 @@
+"""已废弃：Telegram 下载接口已从主应用移除，禁止调用。"""
+
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import Depends, HTTPException, status, BackgroundTasks
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.telegram import TelegramDownloadRequest, TelegramDownloadResponse
 from app.services.telegram import telegram_service
+from app.core.deprecation import create_disabled_router
 
-router = APIRouter()
+router = create_disabled_router("Telegram 下载接口")
 logger = logging.getLogger(__name__)
 
 async def background_download(url: str, user_id: str):

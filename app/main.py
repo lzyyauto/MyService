@@ -1,16 +1,12 @@
 from contextlib import asynccontextmanager
 import logging
-import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import gtd, rest_records, video_process, telegram
-from app.core.config import settings
+from app.api.v1.endpoints import rest_records
 from app.db.init_db import init_db
-from app.services.telegram import telegram_service
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.staticfiles import StaticFiles
 
 
 def setup_logging():
@@ -27,25 +23,15 @@ def setup_logging():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动时初始化日志
     setup_logging()
-    # 启动时初始化数据库
     init_db()
-    # 根据配置启动 Telegram 客户端
-    if settings.ENABLE_TG_SERVICE:
-        await telegram_service.start()
-    else:
-        logging.info("Telegram service is disabled by configuration.")
     yield
-    # 关闭时的清理工作
-    if settings.ENABLE_TG_SERVICE:
-        await telegram_service.stop()
 
 
 app = FastAPI(
-    title="Z收集系统",
+    title="Z 收集系统",
     description=
-    "用于收集和管理用户休息数据的 API 系统\n\n认证方式：在请求头中添加 `Authorization: Bearer <token>`",
+    "用于收集个人数据的 API 系统\n\n认证方式：在请求头中添加 `Authorization: Bearer <api-key>`",
     version="1.0.0",
     openapi_url="/api/v1/openapi.json",
     lifespan=lifespan,
@@ -65,17 +51,8 @@ async def custom_swagger_ui_html():
 
 # 添加接口分组说明
 app.openapi_tags = [{
-    "name": "作息健康相关",
-    "description": "作息记录管理",
-}, {
-    "name": "任务管理",
-    "description": "GTD任务管理",
-}, {
-    "name": "视频处理",
-    "description": "视频下载、音频提取、语音识别、AI总结",
-}, {
-    "name": "Telegram 下载",
-    "description": "通过 Telegram Bots 下载抖音、Twitter 视频",
+    "name": "睡眠记录",
+    "description": "睡眠、起床记录与年度统计",
 }]
 
 # 配置CORS
@@ -87,38 +64,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 挂载下载文件的静态目录
-if not os.path.exists(settings.TG_DOWNLOAD_PATH):
-    os.makedirs(settings.TG_DOWNLOAD_PATH)
-app.mount("/downloads", StaticFiles(directory=settings.TG_DOWNLOAD_PATH), name="downloads")
-
 # 注册路由
 app.include_router(
     rest_records.router,
     prefix="/api/v1/rest-records",
-    tags=["作息健康相关"],
-)
-
-app.include_router(
-    gtd.router,
-    prefix="/api/v1/gtd-tasks",
-    tags=["任务管理"],
-)
-
-app.include_router(
-    video_process.router,
-    prefix="/api/v1/video-process",
-    tags=["视频处理"],
-)
-
-app.include_router(
-    telegram.router,
-    prefix="/api/v1/telegram",
-    tags=["Telegram 下载"],
+    tags=["睡眠记录"],
 )
 
 
 @app.get("/", tags=["系统"])
 async def root():
     """系统根路径，返回欢迎信息"""
-    return {"message": "欢迎使用 Z收集系统 API"}
+    return {"message": "欢迎使用 Z 收集系统 API"}

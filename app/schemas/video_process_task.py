@@ -1,6 +1,5 @@
 """
-视频处理任务API Schema
-Pydantic模型用于请求验证和响应序列化
+已废弃：视频处理 Schema 仅供历史代码兼容。
 """
 
 from typing import Optional, List

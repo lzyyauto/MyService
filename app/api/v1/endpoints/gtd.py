@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, status
+"""已废弃：GTD 接口已从主应用移除，禁止调用。"""
+
+from fastapi import Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
@@ -6,8 +8,9 @@ from app.db.session import get_db
 from app.models.gtd_task import GtdTask as GtdTaskModel
 from app.models.user import User
 from app.schemas.gtd_task import GtdTask, GtdTaskCreate
+from app.core.deprecation import create_disabled_router
 
-router = APIRouter()
+router = create_disabled_router("GTD 接口")
 
 
 @router.post("/",

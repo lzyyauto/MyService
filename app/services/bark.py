@@ -114,7 +114,7 @@ class BarkService:
     async def send_task_notification(self, device_key: str, task_name: str,
                                      status: int, priority: int) -> bool:
         """
-        发送任务状态变更通知
+        已废弃：原 GTD 通知能力，仅为历史代码兼容保留。
 
         Args:
             device_key: 设备 key
@@ -145,7 +145,7 @@ class BarkService:
         video_summary: Optional[str] = None
     ) -> bool:
         """
-        发送视频处理完成通知
+        已废弃：原视频处理通知能力，仅为历史代码兼容保留。
 
         Args:
             device_key: 设备 key

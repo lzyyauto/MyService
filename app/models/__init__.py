@@ -1,4 +1,7 @@
-"""集中导出所有 SQLAlchemy 模型，确保元数据完整注册。"""
+"""集中注册模型。
+
+GTD 与视频模型虽已废弃，仍需注册以兼容既有数据库和 Alembic 历史。
+"""
 
 from app.models.gtd_task import GtdTask
 from app.models.rest_record import RestRecord

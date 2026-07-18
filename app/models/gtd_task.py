@@ -1,3 +1,5 @@
+"""已废弃：GTD 表模型仅用于兼容既有数据库和历史迁移。"""
+
 import uuid
 from datetime import datetime
 
@@ -8,6 +10,8 @@ from app.db.base_class import Base
 
 
 class GtdTask(Base):
+    """已废弃，不得用于新增业务。"""
+
     __tablename__ = "gtd_tasks"
 
     # 任务状态常量

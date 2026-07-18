@@ -1,3 +1,5 @@
+"""已废弃：GTD Schema 仅供历史代码兼容。"""
+
 from datetime import datetime
 from uuid import UUID
 

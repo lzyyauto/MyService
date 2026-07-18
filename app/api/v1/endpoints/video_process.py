@@ -1,12 +1,13 @@
 """
-视频处理API端点
-提供视频下载、音频提取、语音识别、AI总结等功能
+已废弃：视频处理 API 已从主应用移除，禁止调用。
+
+代码仅为历史兼容保留。
 """
 
 import asyncio
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, BackgroundTasks, status, HTTPException
+from fastapi import Depends, BackgroundTasks, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
@@ -21,8 +22,9 @@ from app.schemas.video_process_task import (
     VideoParseResponse
 )
 from app.services.video_processor import VideoProcessorService
+from app.core.deprecation import create_disabled_router
 
-router = APIRouter()
+router = create_disabled_router("视频处理接口")
 logger = logging.getLogger(__name__)
 
 

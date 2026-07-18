@@ -1,29 +1,21 @@
 # Z 收集系统
 
-基于 FastAPI 的个人数据收集 API，提供作息记录、GTD、视频处理和通知能力。
+用于收集个人数据的 Python 服务。目前包含睡眠记录 API 和飞书灵感采集 worker。
 
 ## 🌟 主要功能
 
-### 📊 作息健康管理
+### 📊 睡眠记录
 - 睡眠/起床时间记录
 - 地理位置和WiFi信息追踪
 - 数据自动同步到Notion数据库
 
-### ✅ GTD任务管理
-- 任务创建、状态管理
-- Todo / 进行中 / 已完成 / 已取消状态
-- 任务同步到Notion（可选）
-
-### 🎬 视频智能处理
-- 抖音视频链接解析和下载
-- 无水印视频提取
-- 音频分离和提取
-- AI语音识别转文字
-- 智能内容总结
-
 ### 🔔 通知服务
-- Bark推送通知
-- 错误告警和状态提醒
+- Notion 同步失败时发送 Bark 提醒
+
+### 💡 灵感采集
+- 通过飞书 WebSocket 长连接接收文本消息
+- 追加到本地 Markdown，并给已保存消息添加回执
+- 与 FastAPI 分进程运行，采集故障不影响睡眠 API
 
 ## 🛠 技术栈
 
@@ -33,10 +25,10 @@
 | 数据库 | PostgreSQL + SQLAlchemy 2.0 |
 | 认证授权 | HTTP Bearer + 数据库 API Key |
 | 数据验证 | Pydantic 2.5.2 |
-| 任务队列 | FastAPI BackgroundTasks |
 | 数据库迁移 | Alembic 1.12.1 |
 | 测试框架 | pytest + pytest-asyncio |
 | 外部集成 | Notion API、Bark通知 |
+| 灵感采集 | 飞书开放平台 WebSocket |
 | 部署 | Docker + Docker Compose |
 
 ## 🚀 快速开始
@@ -64,6 +56,9 @@ cp .env.example .env
 
 # 启动服务
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 另开终端启动飞书灵感采集（配置凭证后）
+uv run python -m app.workers.feishu_inspiration
 ```
 
 ### 常用检查
@@ -93,17 +88,35 @@ uv lock
 
 ## 📝 API端点概览
 
-### 作息记录
+### 睡眠记录
 - `POST /api/v1/rest-records/` - 创建作息记录
 - `GET /api/v1/rest-records/` - 获取作息记录列表
+- `GET /api/v1/rest-records/annual-summary/{year}` - 获取年度睡眠总结
+- `GET /api/v1/rest-records/annual-summary/{year}/table` - 获取年度睡眠明细
 
-### GTD任务
-- `POST /api/v1/gtd-tasks/` - 创建任务
+GTD、Telegram 下载和视频处理功能已废弃。对应代码仅为历史兼容保留，路由未注册，
+旧接口不可调用，也不会出现在 OpenAPI 文档中。
 
-### 视频处理
-- `POST /api/v1/video-process/` - 提交视频处理任务
-- `GET /api/v1/video-process/{task_id}` - 查询处理状态
-- `POST /api/v1/video-process/parse-url` - 仅解析视频URL（快速获取下载链接）
+飞书灵感采集不是 HTTP 接口。配置 `.env` 后单独启动 worker：
+
+```env
+FEISHU_APP_ID=cli_xxx
+FEISHU_APP_SECRET=xxx
+INSPIRATION_DOC_PATH=data/inspirations.md
+```
+
+不要直接复用 `daily-claw` Git 历史里的凭证：该仓库曾跟踪过 `.env`。请先在飞书
+开放平台重置应用密钥，再把新密钥写入当前项目被 Git 忽略的 `.env`。
+
+```bash
+# 本地
+uv run python -m app.workers.feishu_inspiration
+
+# Docker；inspiration 是可选 profile
+docker compose --profile inspiration up --build -d
+```
+
+采集结果默认保存在 `data/inspirations.md`。`data/` 是运行时数据目录，不纳入 Git。
 
 ## 🔐 认证方式
 
@@ -121,13 +134,15 @@ app/
 ├── db/                  # 引擎、会话与初始化
 ├── models/              # SQLAlchemy 模型
 ├── schemas/             # Pydantic 模型
-├── services/            # 业务服务与外部集成
+├── services/            # 业务服务与外部集成（含灵感采集）
+├── workers/             # 独立后台进程入口
 └── utils/               # 通用工具
 alembic/                 # 数据库迁移
 scripts/                 # 人工运维脚本
 tests/                   # 自动化测试
 docs/                    # 中文设计与变更文档
-temp/                    # 运行时下载文件（不纳入 Git）
+temp/                    # 废弃功能遗留媒体（不纳入 Git）
+data/                    # 灵感等运行时数据（不纳入 Git）
 pyproject.toml           # 项目元数据与直接依赖
 uv.lock                  # 完整锁定的依赖图
 ```
@@ -147,19 +162,19 @@ POSTGRES_DB=myservice
 NOTION_TOKEN=secret_xxx
 NOTION_SLEEP_DATABASE_ID=xxx
 NOTION_WAKE_DATABASE_ID=xxx
-NOTION_GTD_DATABASE_ID=xxx
 
 # Bark通知
 BARK_BASE_URL=https://api.day.app
 BARK_DEFAULT_DEVICE_KEY=xxx
 
-# 视频处理与 Telegram
-FFMPEG_PATH=/opt/homebrew/bin/ffmpeg
-TG_DOWNLOAD_PATH=temp/telegram_downloads/
-TG_API_ID=xxx
-TG_API_HASH=xxx
-TG_SESSION=xxx
+# 飞书灵感采集
+FEISHU_APP_ID=cli_xxx
+FEISHU_APP_SECRET=xxx
+INSPIRATION_DOC_PATH=data/inspirations.md
 ```
+
+灵感采集设计与限制见
+[`docs/飞书灵感采集整合/README.md`](docs/飞书灵感采集整合/README.md)。
 
 ## 📄 许可证
 

@@ -54,6 +54,7 @@ coverage.xml
 *.cover
 .hypothesis/
 temp/
+data/
 
 # 其他
 .env.local
