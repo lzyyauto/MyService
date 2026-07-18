@@ -44,7 +44,7 @@ logs/
 *.db
 *.sqlite3
 
-# 测试
+# 测试与运行时数据
 .coverage
 htmlcov/
 .pytest_cache/

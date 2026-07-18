@@ -15,10 +15,10 @@ from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.services.bark_service import BarkService
+from app.services.bark import BarkService
 from app.utils.ai_client import get_ai_client
 from app.models.video_process_task import VideoProcessTask
-from app.services.telegram_service import telegram_service
+from app.services.telegram import telegram_service
 
 logger = logging.getLogger(__name__)
 

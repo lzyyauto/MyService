@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.telegram import TelegramDownloadRequest, TelegramDownloadResponse
-from app.services.telegram_service import telegram_service
+from app.services.telegram import telegram_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

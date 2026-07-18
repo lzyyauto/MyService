@@ -187,7 +187,8 @@ class NotionService:
         return await self.create_page(
             database_id=database_id,
             properties=properties,
-            title_property=record_dict.get("month_str"))
+            title_property="月份",
+            title_content=record_dict.get("month_str"))
 
     async def add_gtd_task(self, database_id: str,
                            task: Dict[str, Any]) -> Optional[str]:
@@ -241,4 +242,5 @@ class NotionService:
         return await self.create_page(
             database_id=database_id,
             properties=properties,
-            title_property=record_dict.get("month_str"))
+            title_property="名称",
+            title_content=task["name"])

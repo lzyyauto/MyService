@@ -1,6 +1,6 @@
-# Z收集系统
+# Z 收集系统
 
-基于FastAPI构建的多功能RESTful API系统，用于收集和管理用户数据。
+基于 FastAPI 的个人数据收集 API，提供作息记录、GTD、视频处理和通知能力。
 
 ## 🌟 主要功能
 
@@ -31,7 +31,7 @@
 |------|------|
 | 后端框架 | FastAPI 0.104.1 |
 | 数据库 | PostgreSQL + SQLAlchemy 2.0 |
-| 认证授权 | JWT (python-jose) + bcrypt |
+| 认证授权 | HTTP Bearer + 数据库 API Key |
 | 数据验证 | Pydantic 2.5.2 |
 | 任务队列 | FastAPI BackgroundTasks |
 | 数据库迁移 | Alembic 1.12.1 |
@@ -55,14 +55,24 @@ docker-compose up -d
 
 **方式二：本地开发**
 ```bash
-# 安装依赖
-pip install -r requirements.txt
+# 创建隔离环境并安装开发依赖
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
 
 # 配置环境变量
 cp .env.example .env
 
 # 启动服务
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 常用检查
+
+```bash
+pytest -q
+python -m compileall -q app alembic
+alembic heads
 ```
 
 ### API文档
@@ -87,7 +97,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 🔐 认证方式
 
-所有API请求需要在Header中添加：
+除根路径和 API 文档外，业务请求需要在 Header 中添加：
 ```
 Authorization: Bearer <token>
 ```
@@ -96,22 +106,18 @@ Authorization: Bearer <token>
 
 ```
 app/
-├── api/v1/endpoints/      # API路由
-│   ├── rest_records.py   # 作息记录
-│   ├── gtd.py           # GTD任务
-│   └── video_process.py  # 视频处理
-├── core/                 # 核心模块
-│   ├── config.py        # 配置管理
-│   ├── security.py      # 认证授权
-│   └── services/        # 外部服务
-│       ├── bark_service.py     # Bark通知
-│       └── notion_service.py   # Notion集成
-├── models/              # 数据模型
-│   ├── user.py         # 用户模型
-│   ├── rest_record.py  # 作息记录
-│   ├── gtd_task.py     # GTD任务
-│   └── video_process_task.py # 视频任务
-└── schemas/             # 数据验证
+├── api/v1/endpoints/    # HTTP 路由
+├── core/                # 配置与安全等横切能力
+├── db/                  # 引擎、会话与初始化
+├── models/              # SQLAlchemy 模型
+├── schemas/             # Pydantic 模型
+├── services/            # 业务服务与外部集成
+└── utils/               # 通用工具
+alembic/                 # 数据库迁移
+scripts/                 # 人工运维脚本
+tests/                   # 自动化测试
+docs/                    # 中文设计与变更文档
+temp/                    # 运行时下载文件（不纳入 Git）
 ```
 
 ## ⚙️ 配置说明
@@ -120,7 +126,7 @@ app/
 
 ```env
 # 数据库
-POSTGRES_SERVER=localhost
+POSTGRES_HOST=localhost
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=myservice
@@ -135,8 +141,12 @@ NOTION_GTD_DATABASE_ID=xxx
 BARK_BASE_URL=https://api.day.app
 BARK_DEFAULT_DEVICE_KEY=xxx
 
-# 视频处理
-THIRD_PARTY_DOUYIN_API_URL=http://localhost:8088/api/hybrid/video_data
+# 视频处理与 Telegram
+FFMPEG_PATH=/opt/homebrew/bin/ffmpeg
+TG_DOWNLOAD_PATH=temp/telegram_downloads/
+TG_API_ID=xxx
+TG_API_HASH=xxx
+TG_SESSION=xxx
 ```
 
 ## 📄 许可证

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.endpoints import gtd, rest_records, video_process, telegram
 from app.core.config import settings
 from app.db.init_db import init_db
-from app.services.telegram_service import telegram_service
+from app.services.telegram import telegram_service
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 

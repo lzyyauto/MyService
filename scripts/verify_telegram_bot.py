@@ -6,7 +6,7 @@ import sys
 # 将代码路径加入 sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.services.telegram_service import telegram_service
+from app.services.telegram import telegram_service
 from dotenv import load_dotenv
 
 # 加载配置

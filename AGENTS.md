@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-这个文件为 Claude Code (claude.ai/code) 在处理此代码库时提供指导。
+这个文件为 Codex (Codex.ai/code) 在处理此代码库时提供指导。
 
 ## 🎯 项目概述
 
@@ -232,4 +232,4 @@ TG_SESSION=xxx
 2. 生成的相关文档都存放与docs/文件夹下,非特定名称框架单词之外,文档全部以中文.
 3. 针对新的需求,在docs/下创建对应的需求文件夹,相关文档存储在此.
 4. 需求设计流程参考 docs/SETP.md 原则
-5. 当需求完成之后,更新此文档(CLAUDE.md),保证其信息准确性
+5. 当需求完成之后,更新此文档(AGENTS.md),保证其信息准确性

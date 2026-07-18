@@ -1,4 +1,3 @@
-from ast import If
 from datetime import datetime
 from typing import List
 
@@ -87,8 +86,8 @@ async def create_rest_record(
     import asyncio
 
     from app.core.config import settings
-    from app.core.services.bark_service import BarkService
-    from app.core.services.notion_service import NotionService
+    from app.services.bark import BarkService
+    from app.services.notion import NotionService
 
     async def notion_and_bark_task():
         notion_service = NotionService(token=settings.NOTION_TOKEN)
@@ -150,6 +149,16 @@ async def get_rest_records(*,
     """
     获取当前用户的休息记录列表
     """
+    return (
+        db.query(RestRecordModel)
+        .filter(RestRecordModel.user_id == current_user.id)
+        .order_by(RestRecordModel.rest_time.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
 @router.get("/annual-summary/{year}/table",
             response_model=AnnualSummaryTableResponse,
             summary="获取年度睡眠总结明细表",

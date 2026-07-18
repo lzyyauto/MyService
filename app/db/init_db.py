@@ -2,8 +2,8 @@ from sqlalchemy.orm import Session
 
 from app.db.base_class import Base
 from app.db.session import engine
-from app.models.rest_record import RestRecord
-from app.models.user import User
+# 导入模型包以注册全部表；不要删除这个导入。
+import app.models  # noqa: F401
 
 
 def init_db() -> None:

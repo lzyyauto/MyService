@@ -95,8 +95,8 @@ class VideoProcessTaskResponse(BaseModel):
                 "status": "completed",
                 "summary": "这是一个关于...的视频，主要讲述了...",
                 "original_url": "https://v.douyin.com/iJgDkYhC/",
-                "video_path": "temp/video/1234567890.mp4",
-                "audio_path": "temp/video/1234567890.mp3",
+                "video_path": "temp/telegram_downloads/1234567890.mp4",
+                "audio_path": "temp/telegram_downloads/1234567890.mp3",
                 "subtitle_text": "大家好，今天我要分享的是...",
                 "message": "查询成功"
             }

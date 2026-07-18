@@ -20,7 +20,7 @@ from app.schemas.video_process_task import (
     VideoUrlRequest,
     VideoParseResponse
 )
-from app.core.services.video_processor_service import VideoProcessorService
+from app.services.video_processor import VideoProcessorService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
