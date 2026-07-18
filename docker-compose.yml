@@ -1,5 +1,6 @@
 services:
   web:
+    build: .
     image: lzyyauto/myservice:latest
     container_name: Myservice
     ports:
@@ -16,6 +17,7 @@ services:
       - db
     volumes:
       - .:/app  # 只建议开发用，生产建议去掉
+      - /app/.venv  # 避免宿主机虚拟环境覆盖容器内 Linux 环境
     restart: unless-stopped
     command: >
       sh -c "python -c 'from app.db.init_db import init_db; init_db()' &&

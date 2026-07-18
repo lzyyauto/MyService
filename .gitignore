@@ -61,7 +61,6 @@ temp/
 .env.test.local
 .env.production.local
 .cache/
-.python-version 
 
 #AI
 .claude/

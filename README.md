@@ -42,7 +42,8 @@
 ## 🚀 快速开始
 
 ### 环境要求
-- Python 3.9+
+- Python 3.11
+- uv 0.5.24+
 - PostgreSQL 14+
 - Docker (可选)
 
@@ -50,29 +51,39 @@
 
 **方式一：Docker Compose**
 ```bash
-docker-compose up -d
+docker compose up --build -d
 ```
 
 **方式二：本地开发**
 ```bash
-# 创建隔离环境并安装开发依赖
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
+# 按 uv.lock 安装依赖；首次执行会自动创建项目根目录的 .venv
+uv sync --locked
 
 # 配置环境变量
 cp .env.example .env
 
 # 启动服务
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 常用检查
 
 ```bash
-pytest -q
-python -m compileall -q app alembic
-alembic heads
+uv run pytest -q
+uv run python -m compileall -q app alembic
+uv run alembic heads
+```
+
+`.venv/` 由 uv 管理并被 Git 忽略。如需进入虚拟环境，可执行
+`source .venv/bin/activate`；通常直接使用 `uv run <命令>` 更简单。
+
+依赖统一维护在 `pyproject.toml`，解析结果锁定在 `uv.lock`：
+
+```bash
+uv add <运行依赖>
+uv add --dev <开发依赖>
+uv remove <依赖>
+uv lock
 ```
 
 ### API文档
@@ -88,7 +99,6 @@ alembic heads
 
 ### GTD任务
 - `POST /api/v1/gtd-tasks/` - 创建任务
-- `GET /api/v1/gtd-tasks/` - 获取任务列表
 
 ### 视频处理
 - `POST /api/v1/video-process/` - 提交视频处理任务
@@ -118,6 +128,8 @@ scripts/                 # 人工运维脚本
 tests/                   # 自动化测试
 docs/                    # 中文设计与变更文档
 temp/                    # 运行时下载文件（不纳入 Git）
+pyproject.toml           # 项目元数据与直接依赖
+uv.lock                  # 完整锁定的依赖图
 ```
 
 ## ⚙️ 配置说明

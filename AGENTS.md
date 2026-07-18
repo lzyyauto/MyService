@@ -55,14 +55,14 @@ alembic/
 
 ### 开发
 ```bash
-# 安装依赖
-pip install -r requirements-dev.txt
+# 同步锁定依赖并创建/更新根目录 .venv
+uv sync --locked
 
 # 运行开发服务器
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 使用 Docker 运行
-docker-compose up -d
+docker compose up --build -d
 
 # 查看 API 文档
 open http://localhost:8000/docs
@@ -71,13 +71,13 @@ open http://localhost:8000/docs
 ### 数据库
 ```bash
 # 运行迁移
-alembic upgrade head
+uv run alembic upgrade head
 
 # 创建新迁移
-alembic revision --autogenerate -m "描述"
+uv run alembic revision --autogenerate -m "描述"
 
 # 查看迁移历史
-alembic history
+uv run alembic history
 ```
 
 ### 配置
@@ -198,7 +198,9 @@ TG_SESSION=xxx
 
 ## 📝 开发说明
 
-- **项目最近整理**：服务、测试、脚本和归档资料已按职责归位
+- **项目最近整理**：服务、测试和脚本已按职责归位；无运行价值的旧样例已删除
+- **依赖管理**：统一使用 `pyproject.toml`、`uv.lock` 和项目根目录 `.venv/`；不再维护 requirements 文件
+- **常用命令**：优先使用 `uv sync --locked` 和 `uv run <命令>`；新增依赖使用 `uv add`
 - **视频处理服务**：实现完整处理和仅解析 URL 功能
 - **后台任务**：使用 FastAPI BackgroundTasks 进行异步视频处理
 - **日志**：在 `app/main.py` (app/main.py:12-21) 配置
@@ -213,10 +215,11 @@ TG_SESSION=xxx
 3. **Telegram 下载失败**：检查 API 凭据、Session、机器人可用性和网络
 4. **AI API 错误**：检查 SILICONFLOW_API_KEY 或 OPENAI_API_KEY 配置
 5. **迁移存在双 head**：先查看 `alembic current`，再按 `docs/项目结构整理/README.md` 的说明处理；不要直接重置有数据的数据库
+6. **数据库 collation 版本不一致**：先备份并评估索引重建，再按 PostgreSQL 提示刷新版本；不要在普通整理任务中直接修改
 
 ## 📦 依赖
 
-`requirements.txt` 中的关键包：
+`pyproject.toml` 中的关键包：
 - fastapi, uvicorn - Web 框架
 - sqlalchemy, psycopg2-binary - ORM 和 PostgreSQL 驱动
 - alembic - 数据库迁移
@@ -224,7 +227,9 @@ TG_SESSION=xxx
 - notion-client - Notion API 集成
 - aiohttp, httpx - HTTP 客户端
 - telethon - Telegram 客户端
-- pytest* - 开发测试依赖，位于 `requirements-dev.txt`
+- pytest* - `dev` 依赖组
+
+`uv.lock` 必须提交，`.venv/` 必须保持忽略。Docker 只同步锁文件中的生产依赖。
 
 
 ## 规则

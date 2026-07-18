@@ -10,14 +10,12 @@ venv/
 Dockerfile
 docker-compose.yml
 .pytest_cache/
-pytest.ini
 tests/
 docs/
 scripts/
 README.md
 CLAUDE.md
 AGENTS.md
-requirements-dev.txt
 .github/
 .claude/
 temp/
