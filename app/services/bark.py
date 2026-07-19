@@ -111,8 +111,9 @@ class BarkService:
                                             sound="bell",
                                             group="rest_records")
 
-    async def send_task_notification(self, device_key: str, task_name: str,
-                                     status: int, priority: int) -> bool:
+    async def send_task_notification(  # pragma: no cover - 已废弃兼容代码
+            self, device_key: str, task_name: str, status: int,
+            priority: int) -> bool:
         """
         已废弃：原 GTD 通知能力，仅为历史代码兼容保留。
 
@@ -138,7 +139,7 @@ class BarkService:
             sound="bell",
             group="gtd_tasks")
 
-    async def send_video_process_complete_notification(
+    async def send_video_process_complete_notification(  # pragma: no cover - 已废弃兼容代码
         self,
         device_key: str,
         task_id: str,

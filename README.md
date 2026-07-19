@@ -2,6 +2,17 @@
 
 用于收集个人数据的 Python 服务。目前包含睡眠记录 API 和飞书灵感采集 worker。
 
+项目当前只有后端。FastAPI 和飞书 worker 是两个独立运行单元：前者负责睡眠数据，
+后者负责把飞书文本灵感保存为 Markdown；任一侧故障不应阻塞另一侧。
+
+## 📚 文档导航
+
+- [项目现状与后续开发路线](docs/项目开发指南/README.md)
+- [后端技术路线与开发规范](docs/项目开发指南/后端技术路线与开发规范.md)
+- [测试规范](docs/项目开发指南/测试规范.md)
+- [自动化测试体系实施记录](docs/自动化测试体系/README.md)
+- [需求设计与实施流程](docs/SETP.md)
+
 ## 🌟 主要功能
 
 ### 📊 睡眠记录
@@ -64,10 +75,24 @@ uv run python -m app.workers.feishu_inspiration
 ### 常用检查
 
 ```bash
+# 默认：离线单元测试、编译检查和覆盖率门槛
+./scripts/test.sh unit
+
+# 一次性 PostgreSQL + 真实 HTTP 功能测试（需要 Docker）
+./scripts/test.sh functional
+
+# 依次执行全部验证
+./scripts/test.sh all
+
+# 底层命令仍可直接使用
 uv run pytest -q
 uv run python -m compileall -q app alembic
 uv run alembic heads
 ```
+
+功能测试不会读取正式数据库，也不会访问真实飞书、Notion 或 Bark。完整测试边界、
+覆盖范围与已知限制见
+[`docs/自动化测试体系/README.md`](docs/自动化测试体系/README.md)。
 
 `.venv/` 由 uv 管理并被 Git 忽略。如需进入虚拟环境，可执行
 `source .venv/bin/activate`；通常直接使用 `uv run <命令>` 更简单。
@@ -124,6 +149,21 @@ docker compose --profile inspiration up --build -d
 ```
 Authorization: Bearer <token>
 ```
+
+API Key 来自数据库 `users.api_key`。项目当前没有公开的用户注册或 Key 签发接口，
+首次使用前需通过受控的初始化或运维流程准备用户，不能直接使用示例或测试 Key。
+
+创建记录示例：
+
+```bash
+curl -X POST http://localhost:8000/api/v1/rest-records/ \
+  -H 'Authorization: Bearer <api-key>' \
+  -H 'Content-Type: application/json' \
+  -d '{"city":"上海","wifi_name":"Home"}'
+```
+
+省略 `rest_type` 时，第一条记录默认为睡眠，后续按当前用户上一条记录在睡眠和起床
+之间自动切换。也可以显式传入 `0`（睡眠）或 `1`（起床）。
 
 ## 📁 项目结构
 

@@ -1,7 +1,9 @@
+import asyncio
+import logging
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
@@ -13,6 +15,68 @@ from app.schemas.rest_record import (AnnualSummaryResponse,
                                      RestRecordCreate, to_cn_timezone)
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+async def sync_rest_record_to_notion(
+    rest_record: RestRecordModel,
+    rest_type: int,
+) -> None:
+    """同步已落库记录；外部服务失败不得影响主事务。"""
+    from app.core.config import settings
+    from app.services.bark import BarkService
+    from app.services.notion import NotionService
+
+    database_id = (
+        settings.NOTION_WAKE_DATABASE_ID
+        if rest_type == RestRecordModel.REST_TYPE_WAKE_UP
+        else settings.NOTION_SLEEP_DATABASE_ID
+    )
+    if not settings.NOTION_TOKEN or not database_id:
+        logger.debug("未配置完整 Notion 凭证，跳过休息记录同步")
+        return
+
+    notion_service = NotionService(token=settings.NOTION_TOKEN)
+    for retry_count in range(1, 4):
+        try:
+            page_id = await notion_service.add_rest_record(
+                database_id=database_id,
+                record=rest_record,
+            )
+            if not page_id:
+                raise RuntimeError("Notion 提交失败")
+            return
+        except Exception as error:
+            if retry_count < 3:
+                await asyncio.sleep(1)
+                continue
+
+            logger.exception("休息记录同步 Notion 失败")
+            if settings.BARK_DEFAULT_DEVICE_KEY:
+                bark_service = BarkService(
+                    base_url=settings.BARK_BASE_URL,
+                    default_device_key=settings.BARK_DEFAULT_DEVICE_KEY,
+                )
+                await bark_service.send_notification(
+                    title="Notion同步失败",
+                    content=f"休息记录同步失败（重试3次）: {error}",
+                )
+
+
+def schedule_rest_record_sync(
+    rest_record: RestRecordModel,
+    rest_type: int,
+) -> None:
+    """仅在配置完整时创建后台同步任务。"""
+    from app.core.config import settings
+
+    database_id = (
+        settings.NOTION_WAKE_DATABASE_ID
+        if rest_type == RestRecordModel.REST_TYPE_WAKE_UP
+        else settings.NOTION_SLEEP_DATABASE_ID
+    )
+    if settings.NOTION_TOKEN and database_id:
+        asyncio.create_task(sync_rest_record_to_notion(rest_record, rest_type))
 
 
 @router.post("/",
@@ -82,43 +146,7 @@ async def create_rest_record(
     db.commit()
     db.refresh(rest_record)
 
-    # --- 新增异步业务流程 ---
-    import asyncio
-
-    from app.core.config import settings
-    from app.services.bark import BarkService
-    from app.services.notion import NotionService
-
-    async def notion_and_bark_task():
-        notion_service = NotionService(token=settings.NOTION_TOKEN)
-        bark_service = BarkService(
-            base_url=settings.BARK_BASE_URL,
-            default_device_key=settings.BARK_DEFAULT_DEVICE_KEY)
-        retry_count = 0
-        max_retries = 3
-        while retry_count < max_retries:
-            try:
-                page_id = await notion_service.add_rest_record(
-                    database_id=settings.NOTION_WAKE_DATABASE_ID
-                    if rest_type == 1 else
-                    settings.NOTION_SLEEP_DATABASE_ID,
-                    record=rest_record)
-                if not page_id:
-                    raise Exception("Notion提交失败")
-                break
-            except Exception as e:
-                retry_count += 1
-                if retry_count == max_retries:
-                    # 重试3次后仍失败，发 Bark 通知
-                    await bark_service.send_notification(
-                        title="Notion同步失败",
-                        content=f"休息记录同步失败（重试{max_retries}次）: {str(e)}")
-                else:
-                    # 重试间隔，例如 1 秒
-                    await asyncio.sleep(1)
-
-    asyncio.create_task(notion_and_bark_task())
-    # --- 业务流程结束 ---
+    schedule_rest_record_sync(rest_record, rest_type)
 
     return rest_record
 
@@ -144,8 +172,8 @@ async def create_rest_record(
 async def get_rest_records(*,
                            db: Session = Depends(get_db),
                            current_user: User = Depends(get_current_user),
-                           skip: int = 0,
-                           limit: int = 100) -> List[RestRecord]:
+                           skip: int = Query(0, ge=0),
+                           limit: int = Query(100, ge=1, le=500)) -> List[RestRecord]:
     """
     获取当前用户的休息记录列表
     """
@@ -164,7 +192,7 @@ async def get_rest_records(*,
             summary="获取年度睡眠总结明细表",
             description="返回一整年每一天的睡眠会话明细，包括入睡/起床时间、时长及位置，用于查漏补缺。")
 async def get_annual_summary_table(
-    year: str,
+    year: int = Path(..., ge=1970, le=2100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> AnnualSummaryTableResponse:
@@ -180,7 +208,7 @@ async def get_annual_summary_table(
     ).order_by(RestRecordModel.rest_time.asc()).all()
 
     if not records:
-        return {"year": year, "count": 0, "records": []}
+        return {"year": str(year), "count": 0, "records": []}
 
     # 核心配对算法
     sessions = []
@@ -235,7 +263,7 @@ async def get_annual_summary_table(
         i += 1
 
     return {
-        "year": year,
+        "year": str(year),
         "count": len(sessions),
         "records": sorted(sessions, key=lambda x: x['date'], reverse=True)
     }
@@ -246,7 +274,7 @@ async def get_annual_summary_table(
             summary="获取年度睡眠总结",
             description="从多个维度统计用户一整年的入睡和起床数据，生成年度报告。")
 async def get_annual_summary(
-    year: str,
+    year: int = Path(..., ge=1970, le=2100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> AnnualSummaryResponse:
@@ -397,7 +425,7 @@ async def get_annual_summary(
 
     return {
         "overview": {
-            "year": year,
+            "year": str(year),
             "total_days_logged": len(daily_sessions),
             "distinct_cities_count": distinct_cities_count,
             "distinct_wake_cities_count": distinct_wake_cities_count,

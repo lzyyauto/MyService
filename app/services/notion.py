@@ -190,8 +190,9 @@ class NotionService:
             title_property="月份",
             title_content=record_dict.get("month_str"))
 
-    async def add_gtd_task(self, database_id: str,
-                           task: Dict[str, Any]) -> Optional[str]:
+    async def add_gtd_task(  # pragma: no cover - 已废弃兼容代码
+            self, database_id: str,
+            task: Dict[str, Any]) -> Optional[str]:
         """
         已废弃：原 GTD 同步能力，仅为历史代码兼容保留。
         

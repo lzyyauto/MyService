@@ -20,11 +20,11 @@ class HTTPBearer(HTTPBearerSecurity):
         self.description = "输入格式: Bearer <your-token>"
 
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-        credentials: HTTPAuthorizationCredentials = Security(security),
+        credentials: Optional[HTTPAuthorizationCredentials] = Security(security),
         db: Session = Depends(get_db)) -> User:
     """
     从 Authorization header 中获取并验证 token

@@ -1,5 +1,8 @@
 import json
 from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import pytest
 
 from app.services.inspiration import (
     FeishuInspirationCollector,
@@ -62,3 +65,40 @@ def test_collector_persists_before_sending_reaction(tmp_path, monkeypatch) -> No
     assert collector.process_next(timeout=0.1)
     assert target.read_text(encoding="utf-8") == "- [08:00:00] 一个灵感\n"
     assert reaction_calls == ["message-1"]
+
+
+def test_collector_rejects_missing_credentials(tmp_path) -> None:
+    with pytest.raises(ValueError, match="不能为空"):
+        FeishuInspirationCollector("", "", tmp_path / "notes.md")
+
+
+def test_tenant_token_is_cached_across_reactions(tmp_path, monkeypatch) -> None:
+    token_response = MagicMock()
+    token_response.json.return_value = {
+        "code": 0,
+        "tenant_access_token": "tenant-token",
+        "expire": 7200,
+    }
+    reaction_response = MagicMock()
+    post = MagicMock(
+        side_effect=[token_response, reaction_response, reaction_response]
+    )
+    monkeypatch.setattr("app.services.inspiration.requests.post", post)
+    collector = FeishuInspirationCollector(
+        "app-id",
+        "secret",
+        tmp_path / "notes.md",
+    )
+
+    collector.add_reaction("message-1")
+    collector.add_reaction("message-2")
+
+    assert post.call_count == 3
+    assert post.call_args_list[0].args[0].endswith(
+        "/tenant_access_token/internal"
+    )
+    assert post.call_args_list[1].kwargs["headers"]["Authorization"] == (
+        "Bearer tenant-token"
+    )
+    token_response.raise_for_status.assert_called_once()
+    assert reaction_response.raise_for_status.call_count == 2

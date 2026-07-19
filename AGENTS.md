@@ -55,6 +55,8 @@ app/workers/
 └── feishu_inspiration.py # 飞书长连接独立进程入口
 alembic/                  # 历史迁移，不得因功能废弃而改写
 tests/                    # 自动化测试
+├── unit/                 # 无 Docker、无外部服务的单元测试
+└── functional/           # 一次性 PostgreSQL、真实 HTTP 与本地外部服务替身
 docs/                     # 中文需求与设计文档
 ```
 
@@ -71,7 +73,9 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 uv run python -m app.workers.feishu_inspiration
 
 # 测试与检查
-uv run pytest -q
+./scripts/test.sh unit
+./scripts/test.sh functional
+./scripts/test.sh all
 uv run python -m compileall -q app alembic scripts tests
 uv run alembic heads
 
@@ -114,6 +118,25 @@ FastAPI 仅开放：
 
 根路径和 API 文档不要求认证。
 
+## 测试规则
+
+- 单元测试位于 `tests/unit/`，不得访问网络、真实数据库或用户数据。
+- 功能测试位于 `tests/functional/`，只能使用 `docker-compose.functional.yml`
+  创建的一次性 PostgreSQL 和本地外部服务替身。
+- 默认测试不得连接真实飞书、Notion 或 Bark。
+- 统一入口是 `scripts/test.sh`；`unit` 是本地第一道验证，`functional` 验证真实
+  HTTP/PostgreSQL 链路，`all` 依次执行两者。
+- 当前活跃模块单元测试覆盖率门槛为 75%；废弃兼容函数不计入门槛。
+- 功能测试结束后必须清理容器和数据；仅调试时允许使用 `KEEP_TEST_STACK=1`。
+- 当前两个 Alembic head 尚未合并，功能测试暂用空库 `create_all`。不得把这项测试
+  误称为生产迁移验证；完整决策见 `docs/自动化测试体系/README.md`。
+
+长期开发入口：
+
+- `docs/项目开发指南/README.md`：当前能力、边界、技术债和后续路线；
+- `docs/项目开发指南/后端技术路线与开发规范.md`：分层职责、代码规范和功能开发路径；
+- `docs/项目开发指南/测试规范.md`：测试分层、隔离规则和按改动类型选择验证。
+
 飞书灵感采集通过长连接接收事件，不注册 HTTP 路由。它必须作为独立进程运行，
 不得加入 FastAPI lifespan，以免 Uvicorn 重载或多进程造成重复连接。
 
@@ -153,6 +176,7 @@ GTD、Telegram 下载、视频和旧 AI 配置字段仅在 `Settings` 中兼容�
 1. Alembic 存在两个 head。先检查 `alembic current`，不得直接重置有数据的数据库。
 2. PostgreSQL `zrest` 存在 collation 版本提示，处理前必须备份并评估索引重建。
 3. 部分 Pydantic Schema 仍使用 v1 兼容写法，会产生弃用警告。
+4. Docker daemon 未运行时只能执行单元测试和本地飞书管道测试，无法执行完整功能测试。
 
 ## 协作规则
 
