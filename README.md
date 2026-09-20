@@ -1,6 +1,7 @@
 # Z 收集系统
 
-用于收集个人数据的 Python 服务。目前包含睡眠记录 API 和飞书灵感采集 worker。
+用于记录个人数据的 Python 服务。睡眠/起床数据以本地 PostgreSQL 为准；Notion 是异步、
+尽力而为的副本。现有 iOS 快捷指令可通过统一 Notion 采集接口提交标准页面载荷。
 
 项目当前只有后端。FastAPI 和飞书 worker 是两个独立运行单元：前者负责睡眠数据，
 后者负责把飞书文本灵感保存为 Markdown；任一侧故障不应阻塞另一侧。
@@ -11,7 +12,7 @@
 - [后端技术路线与开发规范](docs/项目开发指南/后端技术路线与开发规范.md)
 - [测试规范](docs/项目开发指南/测试规范.md)
 - [自动化测试体系实施记录](docs/自动化测试体系/README.md)
-- [需求设计与实施流程](docs/SETP.md)
+- [Notion 统一采集与运动映射](docs/Notion统一采集与运动映射/README.md)
 
 ## 🌟 主要功能
 
@@ -22,6 +23,11 @@
 
 ### 🔔 通知服务
 - Notion 同步失败时发送 Bark 提醒
+
+### 🏃 Notion 统一采集
+- 接收经系统 API Key 认证的 Notion 标准页面 JSON
+- 已映射的运动数据库严格入库；未映射载荷仍持久化并异步投递 Notion
+- 独立 worker 持久化重试三次，避免 Web 进程重启丢失同步任务
 
 ### 💡 灵感采集
 - 通过飞书 WebSocket 长连接接收文本消息
@@ -119,8 +125,30 @@ uv lock
 - `GET /api/v1/rest-records/annual-summary/{year}` - 获取年度睡眠总结
 - `GET /api/v1/rest-records/annual-summary/{year}/table` - 获取年度睡眠明细
 
-GTD、Telegram 下载和视频处理功能已废弃。对应代码仅为历史兼容保留，路由未注册，
-旧接口不可调用，也不会出现在 OpenAPI 文档中。
+### Notion 统一采集
+
+- `POST /api/v1/notion-ingest/` - 接收 Notion 标准页面载荷，返回本地事件和投递任务 ID
+- `PUT /api/v1/notion-ingest/mappings/{database_id}` - 建立或更新某个 database ID 的业务映射
+- `GET /api/v1/notion-ingest/mappings` - 查询当前用户映射
+
+运动 database 应先配置业务类型 `exercise`，并填写人类可读的显示名称和说明；服务端会选择
+对应的字段规则。它要求 `运动类型`、`时长`、`记录时间`、`日期`、`月份`，可选 `城市`。
+映射后的格式错误会返回 `422`，不会提交 Notion。未映射数据保留原始 JSON 并继续投递。详情和快捷指令改造见
+[`docs/Notion统一采集与运动映射/README.md`](docs/Notion统一采集与运动映射/README.md)。
+首次联调请按[本地手动测试操作手册](docs/Notion统一采集与运动映射/手动测试操作手册.md)执行，
+该流程不依赖 Docker。
+
+### 可选公开调试接收器
+
+默认不注册。如需临时观察第三方 POST 请求，可在 `.env` 设置
+`ENABLE_PUBLIC_REQUEST_DUMP=true` 并重启服务，然后请求：
+
+- `POST /api/v1/public-request-dump/` - 无鉴权地记录并 JSON 回显请求头、查询参数和原始正文
+
+该端点会记录和回显敏感 header、Cookie、签名及正文；仅应在受控网络短时开启。原始正文
+以 Base64 无损返回，调试完成后将开关改回 `false` 并重启服务。
+
+历史 GTD、Telegram 下载和视频处理仅为数据兼容保留，未开放 API。
 
 飞书灵感采集不是 HTTP 接口。配置 `.env` 后单独启动 worker：
 
@@ -128,6 +156,9 @@ GTD、Telegram 下载和视频处理功能已废弃。对应代码仅为历史�
 FEISHU_APP_ID=cli_xxx
 FEISHU_APP_SECRET=xxx
 INSPIRATION_DOC_PATH=data/inspirations.md
+
+# 公开调试接收器（默认关闭）
+ENABLE_PUBLIC_REQUEST_DUMP=false
 ```
 
 不要直接复用 `daily-claw` Git 历史里的凭证：该仓库曾跟踪过 `.env`。请先在飞书
@@ -202,6 +233,9 @@ POSTGRES_DB=myservice
 NOTION_TOKEN=secret_xxx
 NOTION_SLEEP_DATABASE_ID=xxx
 NOTION_WAKE_DATABASE_ID=xxx
+NOTION_DELIVERY_POLL_INTERVAL_SECONDS=5
+NOTION_DELIVERY_RETRY_DELAY_SECONDS=30
+NOTION_DELIVERY_LEASE_SECONDS=300
 
 # Bark通知
 BARK_BASE_URL=https://api.day.app

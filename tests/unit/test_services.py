@@ -90,6 +90,19 @@ async def test_notion_create_page_returns_none_on_client_error() -> None:
 
 
 @pytest.mark.asyncio
+async def test_notion_create_page_from_payload_forwards_standard_request() -> None:
+    service = NotionService(token="test-token")
+    service.client.pages.create = MagicMock(return_value={"id": "page-id"})
+    payload = {
+        "parent": {"type": "database_id", "database_id": "database-id"},
+        "properties": {"名称": {"title": []}},
+    }
+
+    assert await service.create_page_from_payload(payload) == "page-id"
+    service.client.pages.create.assert_called_once_with(**payload)
+
+
+@pytest.mark.asyncio
 async def test_bark_rest_notification_builds_expected_message() -> None:
     service = BarkService(base_url="https://example.test")
     service.send_notification = AsyncMock(return_value=True)

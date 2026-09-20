@@ -78,6 +78,15 @@ class NotionService:
             print(f"Notion 数据同步失败: {str(e)}")
             return None
 
+    async def create_page_from_payload(self, payload: Dict[str, Any]) -> Optional[str]:
+        """转发已校验并持久化的 Notion 页面创建载荷。"""
+        try:
+            response = self.client.pages.create(**payload)
+            return response.get("id")
+        except Exception as error:
+            print(f"Notion 数据同步失败: {str(error)}")
+            return None
+
     def _format_property(self, prop_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         格式化属性数据

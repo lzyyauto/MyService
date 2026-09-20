@@ -23,6 +23,11 @@ Z 收集系统是一个仅包含后端的个人数据收集服务，由两个相
   -> 可选 Notion 同步
   -> 同步失败时可选 Bark 提醒
 
+iOS 快捷指令 Notion 页面 JSON
+  -> 认证的统一采集 API
+  -> PostgreSQL 采集事件 / 可选业务投影
+  -> 独立 Notion 投递 worker
+
 飞书文本消息
   -> 独立 WebSocket worker
   -> 本地 Markdown
@@ -62,7 +67,19 @@ FastAPI 和飞书 worker 共用代码仓库、配置体系和 Docker 镜像，�
 - 最近 2,000 个消息 ID 在进程内去重；
 - 默认写入 `data/inspirations.md`。
 
-### 2.3 有意保留但不开放的历史能力
+### 2.3 Notion 统一采集与运动映射
+
+- `POST /api/v1/notion-ingest/` 接收标准 Notion 页面 JSON；数据库是唯一可信数据源；
+- 每次成功接收都会保存原始事件和持久化投递任务；未映射的 database ID 也会同步 Notion；
+- `notion_database_mappings` 将同一用户的 database ID 关联到业务类型、显示名称和说明；
+- 首个业务类型是 `exercise`，当前字段规则严格投影为 `exercise_records`；格式不符返回 `422`，
+  不创建事件也不投递；
+- `notion-delivery` 独立 worker 每项最多重试三次，最终失败保留证据并可通过 Bark 提醒。
+
+具体输入契约、字段与迁移边界见
+[`docs/Notion统一采集与运动映射/README.md`](../Notion统一采集与运动映射/README.md)。
+
+### 2.4 有意保留但不开放的历史能力
 
 GTD、Telegram 下载、视频处理和旧 AI 客户端已废弃：
 
@@ -91,8 +108,8 @@ GTD、Telegram 下载、视频处理和旧 AI 客户端已废弃：
 
 以下项目属于当前事实，不应在普通功能开发中顺手修改：
 
-1. Alembic 存在两个 head，生产数据库 revision 未核对前不得直接合并、重置或改写
-   历史迁移。
+1. Alembic 已由 `20260902_notion_ingest` 合并为一个 head，但生产数据库尚未在备份副本
+   上验证 upgrade/rollback；不得重置或改写历史迁移。
 2. 功能测试暂用空库 `create_all` 建表，只验证当前模型和运行链路，不代表生产迁移
    链路健康。
 3. 部分 Pydantic Schema 仍使用 v1 兼容写法，会产生弃用警告。
@@ -114,14 +131,13 @@ GTD、Telegram 下载、视频处理和旧 AI 客户端已废弃：
 
 步骤：
 
-1. 备份真实数据库，并只读确认 `alembic current`、现有表和两个 head 的实际关系；
+1. 备份真实数据库，并只读确认 `alembic current`、现有表和合并 revision 的实际关系；
 2. 记录生产数据库来源和可回退点；
-3. 设计新的 merge revision，不改写已发布迁移；
-4. 在生产数据副本上验证 upgrade 和 rollback 策略；
-5. 将功能测试建表方式从 `create_all` 切换为 `alembic upgrade head`；
-6. 默认启用 `STRICT_MIGRATIONS=1`。
+3. 在生产数据副本上验证合并 revision 的 upgrade 和 rollback 策略；
+4. 将功能测试建表方式从 `create_all` 切换为 `alembic upgrade head`；
+5. 默认启用 `STRICT_MIGRATIONS=1`。
 
-完成标准：仓库只有一个 head，空库迁移和受支持旧 revision 升级均由自动化测试验证。
+完成标准：空库迁移和受支持旧 revision 升级均由自动化测试验证。
 
 ### P1：建立持续集成与静态质量门禁
 
@@ -191,4 +207,3 @@ GTD、Telegram 下载、视频处理和旧 AI 客户端已废弃：
 - 单元测试与功能测试分别验证什么；
 - 数据迁移、回退和故障处理方式；
 - 文档所写的是“当前实现”还是“后续计划”。
-

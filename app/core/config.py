@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     APP_NAME: str
     DEBUG: bool
     ENVIRONMENT: str
+    # 默认关闭。开启后会注册一个无鉴权、回显全部请求内容的临时调试端点。
+    ENABLE_PUBLIC_REQUEST_DUMP: bool = False
     # 以下废弃功能开关仅为兼容旧配置保留，主应用不再读取。
     ENABLE_TG_SERVICE: bool = False
 
@@ -33,6 +35,9 @@ class Settings(BaseSettings):
     NOTION_SLEEP_DATABASE_ID: Optional[str] = None
     NOTION_WAKE_DATABASE_ID: Optional[str] = None
     NOTION_GTD_DATABASE_ID: Optional[str] = None
+    NOTION_DELIVERY_POLL_INTERVAL_SECONDS: int = 5
+    NOTION_DELIVERY_RETRY_DELAY_SECONDS: int = 30
+    NOTION_DELIVERY_LEASE_SECONDS: int = 300
 
     # Bark 配置
     BARK_BASE_URL: str = "https://api.day.app"

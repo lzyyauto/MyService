@@ -3,6 +3,8 @@ services:
     build: .
     image: lzyyauto/myservice:latest
     container_name: Myservice
+    env_file:
+      - .env
     ports:
       - "${PORT:-8000}:8000"
     environment:
@@ -12,6 +14,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST=db
       - POSTGRES_PORT=${POSTGRES_PORT}
+      - ENABLE_PUBLIC_REQUEST_DUMP=${ENABLE_PUBLIC_REQUEST_DUMP:-false}
       # 你可以加更多自定义环境变量
     depends_on:
       - db
@@ -23,6 +26,25 @@ services:
       sh -c "python -c 'from app.db.init_db import init_db; init_db()' &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
     # 生产环境建议去掉 --reload
+
+  notion-delivery:
+    build: .
+    image: lzyyauto/myservice:latest
+    container_name: NotionDelivery
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - POSTGRES_HOST=db
+    depends_on:
+      - db
+    volumes:
+      - .:/app  # 只建议开发用，生产建议去掉
+      - /app/.venv
+    restart: unless-stopped
+    command: >
+      sh -c "python -c 'from app.db.init_db import init_db; init_db()' &&
+             python -m app.workers.notion_delivery"
 
   feishu-inspiration:
     profiles:

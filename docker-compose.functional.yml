@@ -5,6 +5,7 @@ services:
       APP_NAME: z-collection-system-functional
       DEBUG: "False"
       ENVIRONMENT: testing
+      ENABLE_PUBLIC_REQUEST_DUMP: "false"
       POSTGRES_USER: functional
       POSTGRES_PASSWORD: functional
       POSTGRES_DB: functional

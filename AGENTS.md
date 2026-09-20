@@ -12,6 +12,8 @@
 - 保存 WiFi、经纬度和城市等可选位置数据；
 - 查询记录并生成年度总结、年度明细；
 - 可选同步 Notion，并在同步失败时通过 Bark 提醒。
+- 接收 Notion 标准页面 JSON；映射保存业务类型、显示名称和说明，已映射运动数据写入本地
+  业务表，未映射数据仍保存并同步。
 - 通过独立飞书 WebSocket worker 接收文本灵感，保存为 Markdown 并添加回执。
 
 GTD、Telegram 下载、视频处理和相关 AI 能力已于 2026-07-19 废弃。代码、模型和
@@ -35,7 +37,9 @@ GTD、Telegram 下载、视频处理和相关 AI 能力已于 2026-07-19 废弃�
 ```text
 app/
 ├── api/v1/endpoints/
-│   ├── rest_records.py   # 当前唯一业务 API
+│   ├── rest_records.py   # 当前睡眠业务 API
+│   ├── notion_ingest.py  # 认证的 Notion 页面采集与映射 API
+│   ├── public_request_dump.py # 可选公开调试接收器，默认不注册
 │   ├── gtd.py            # 已废弃，禁止注册
 │   ├── telegram.py       # 已废弃，禁止注册
 │   └── video_process.py  # 已废弃，禁止注册
@@ -47,12 +51,14 @@ app/
 │   ├── bark.py           # 睡眠同步失败提醒；含少量废弃兼容方法
 │   ├── inspiration.py    # 飞书灵感解析、去重、落盘和回执
 │   ├── notion.py         # 睡眠 Notion 同步；含废弃 GTD 方法
+│   ├── notion_ingest.py  # 严格业务 mapper
 │   ├── telegram.py       # 已废弃
 │   └── video_processor.py # 已废弃
 └── utils/
     └── ai_client.py      # 已废弃
 app/workers/
-└── feishu_inspiration.py # 飞书长连接独立进程入口
+├── feishu_inspiration.py # 飞书长连接独立进程入口
+└── notion_delivery.py    # Notion 持久化投递队列独立进程入口
 alembic/                  # 历史迁移，不得因功能废弃而改写
 tests/                    # 自动化测试
 ├── unit/                 # 无 Docker、无外部服务的单元测试
@@ -71,6 +77,9 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 运行飞书灵感采集 worker
 uv run python -m app.workers.feishu_inspiration
+
+# 运行 Notion 投递 worker
+uv run python -m app.workers.notion_delivery
 
 # 测试与检查
 ./scripts/test.sh unit
@@ -115,6 +124,16 @@ FastAPI 仅开放：
 - `GET /api/v1/rest-records/`
 - `GET /api/v1/rest-records/annual-summary/{year}`
 - `GET /api/v1/rest-records/annual-summary/{year}/table`
+- `POST /api/v1/notion-ingest/`
+- `PUT /api/v1/notion-ingest/mappings/{database_id}`
+- `GET /api/v1/notion-ingest/mappings`
+
+当且仅当 `ENABLE_PUBLIC_REQUEST_DUMP=true` 时，另开放无鉴权的调试端点：
+
+- `POST /api/v1/public-request-dump/`
+
+它会回显并记录完整请求内容（包括可能的敏感数据），只可在受控网络短时使用；默认关闭时
+必须保持 `404`。
 
 根路径和 API 文档不要求认证。
 
@@ -128,8 +147,8 @@ FastAPI 仅开放：
   HTTP/PostgreSQL 链路，`all` 依次执行两者。
 - 当前活跃模块单元测试覆盖率门槛为 75%；废弃兼容函数不计入门槛。
 - 功能测试结束后必须清理容器和数据；仅调试时允许使用 `KEEP_TEST_STACK=1`。
-- 当前两个 Alembic head 尚未合并，功能测试暂用空库 `create_all`。不得把这项测试
-  误称为生产迁移验证；完整决策见 `docs/自动化测试体系/README.md`。
+- 当前迁移图已有一个 head，但功能测试仍暂用空库 `create_all`。不得把这项测试误称为
+  生产迁移验证；完整决策见 `docs/自动化测试体系/README.md`。
 
 长期开发入口：
 
@@ -158,8 +177,11 @@ FastAPI 仅开放：
 当前有效配置：
 
 - 应用：`APP_NAME`、`DEBUG`、`ENVIRONMENT`
+- 公开调试接收器：`ENABLE_PUBLIC_REQUEST_DUMP`（默认 `false`）
 - 数据库：`POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB`、`POSTGRES_HOST`、`POSTGRES_PORT`
 - Notion：`NOTION_TOKEN`、`NOTION_SLEEP_DATABASE_ID`、`NOTION_WAKE_DATABASE_ID`
+- Notion 投递：`NOTION_DELIVERY_POLL_INTERVAL_SECONDS`、
+  `NOTION_DELIVERY_RETRY_DELAY_SECONDS`、`NOTION_DELIVERY_LEASE_SECONDS`
 - Bark：`BARK_BASE_URL`、`BARK_DEFAULT_DEVICE_KEY`
 - 飞书灵感：`FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_BASE_URL`、
   `INSPIRATION_DOC_PATH`
@@ -173,7 +195,8 @@ GTD、Telegram 下载、视频和旧 AI 配置字段仅在 `Settings` 中兼容�
 
 ## 已知问题
 
-1. Alembic 存在两个 head。先检查 `alembic current`，不得直接重置有数据的数据库。
+1. Notion 统一采集迁移合并了历史两个 head。生产升级前先检查 `alembic current`、完成
+   数据库备份；不得直接重置有数据的数据库。
 2. PostgreSQL `zrest` 存在 collation 版本提示，处理前必须备份并评估索引重建。
 3. 部分 Pydantic Schema 仍使用 v1 兼容写法，会产生弃用警告。
 4. Docker daemon 未运行时只能执行单元测试和本地飞书管道测试，无法执行完整功能测试。

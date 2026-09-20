@@ -27,10 +27,14 @@ run_unit_tests() {
   echo "==> 执行单元测试"
   uv run pytest tests/unit -m "not functional" \
     --cov=app.api.v1.endpoints.rest_records \
+    --cov=app.api.v1.endpoints.notion_ingest \
+    --cov=app.api.v1.endpoints.public_request_dump \
     --cov=app.core.security \
     --cov=app.services.inspiration \
     --cov=app.services.notion \
+    --cov=app.services.notion_ingest \
     --cov=app.services.bark \
+    --cov=app.workers.notion_delivery \
     --cov-report=term-missing \
     --cov-fail-under=75
 }

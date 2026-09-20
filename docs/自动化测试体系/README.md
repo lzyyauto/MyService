@@ -96,20 +96,20 @@ KEEP_TEST_STACK=1 ./scripts/test.sh functional
 - 不包含依赖漏洞扫描和密钥扫描；
 - 不验证现有数据库从历史版本执行 Alembic 升级。
 
-### Alembic 阻塞项
+### Alembic 迁移边界
 
-仓库当前存在两个 Alembic head。为避免擅自合并历史迁移并危及已有数据库，功能测试空库
-暂时使用 `init_db/create_all` 建表。因此它验证的是当前模型与运行链路，不代表生产迁移
-链路已经健康。
+仓库已由 `20260902_notion_ingest` 合并为一个 Alembic head，但功能测试空库仍暂时使用
+`init_db/create_all` 建表。因此它验证的是当前模型与运行链路，不代表生产迁移链路已经
+健康。
 
-单元测试脚本会打印警告；CI 中可先设置以下变量把它升级为强制失败：
+CI 中可设置以下变量要求迁移图保持单一 head：
 
 ```bash
 STRICT_MIGRATIONS=1 ./scripts/test.sh unit
 ```
 
-建议后续在备份并确认生产数据库当前 revision 后，单独设计 merge migration，再把功能
-测试切换为 `alembic upgrade head`。
+后续仍需在备份并确认生产数据库当前 revision 后，验证 upgrade/rollback，再把功能测试
+切换为 `alembic upgrade head`。
 
 ### 建议的第二阶段
 

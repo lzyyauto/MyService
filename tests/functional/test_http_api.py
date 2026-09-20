@@ -19,6 +19,9 @@ def test_root_and_openapi_expose_only_active_http_features(
     paths = set(schema["paths"])
     assert paths == {
         "/",
+        "/api/v1/notion-ingest/",
+        "/api/v1/notion-ingest/mappings",
+        "/api/v1/notion-ingest/mappings/{database_id}",
         "/api/v1/rest-records/",
         "/api/v1/rest-records/annual-summary/{year}",
         "/api/v1/rest-records/annual-summary/{year}/table",
@@ -31,6 +34,7 @@ def test_authentication_and_input_boundaries(
     prepared_backend: None,
 ) -> None:
     assert requests.get(f"{base_url}/api/v1/rest-records/", timeout=5).status_code == 401
+    assert requests.post(f"{base_url}/api/v1/notion-ingest/", timeout=5).status_code == 401
     assert requests.get(
         f"{base_url}/api/v1/rest-records/",
         headers={"Authorization": "Bearer invalid"},
@@ -130,6 +134,107 @@ def test_sleep_record_full_http_flow(
     )
     assert summary.status_code == 200, summary.text
     assert summary.json()["overview"]["avg_duration_hrs"] == 8.0
+
+
+def test_notion_ingest_maps_exercise_and_keeps_unmapped_events(
+    base_url: str,
+    auth_headers: dict[str, str],
+    prepared_backend: None,
+) -> None:
+    database_id = "exercise-database-id"
+    mapping = requests.put(
+        f"{base_url}/api/v1/notion-ingest/mappings/{database_id}",
+        headers=auth_headers,
+        json={
+            "business_type": "exercise",
+            "display_name": "日常运动记录",
+            "description": "来自 iOS 快捷指令；时长单位为小时。",
+        },
+        timeout=5,
+    )
+    assert mapping.status_code == 200, mapping.text
+
+    payload = {
+        "parent": {"type": "database_id", "database_id": database_id},
+        "properties": {
+            "运动类型": {"type": "select", "select": {"name": "跑步"}},
+            "月份": {
+                "type": "title",
+                "title": [{"type": "text", "text": {"content": "09月"}}],
+            },
+            "城市": {
+                "type": "rich_text",
+                "rich_text": [{"type": "text", "text": {"content": "上海市"}}],
+            },
+            "时长": {"type": "number", "number": 1},
+            "记录时间": {
+                "type": "date",
+                "date": {"start": "2026-09-02T16:01:35+08:00"},
+            },
+            "日期": {"type": "date", "date": {"start": "2026-09-02"}},
+        },
+        "idempotency_key": "exercise-event-1",
+    }
+    accepted = requests.post(
+        f"{base_url}/api/v1/notion-ingest/",
+        headers=auth_headers,
+        json=payload,
+        timeout=5,
+    )
+    assert accepted.status_code == 202, accepted.text
+    assert accepted.json()["business_type"] == "exercise"
+    assert accepted.json()["mapping_name"] == "日常运动记录"
+    assert accepted.json()["delivery_status"] == "pending"
+
+    duplicate = requests.post(
+        f"{base_url}/api/v1/notion-ingest/",
+        headers=auth_headers,
+        json=payload,
+        timeout=5,
+    )
+    assert duplicate.status_code == 202
+    assert duplicate.json()["duplicate"] is True
+    assert duplicate.json()["event_id"] == accepted.json()["event_id"]
+
+    invalid = {**payload, "idempotency_key": "exercise-event-invalid"}
+    invalid["properties"] = {**payload["properties"], "时长": {"type": "number", "number": -1}}
+    rejected = requests.post(
+        f"{base_url}/api/v1/notion-ingest/",
+        headers=auth_headers,
+        json=invalid,
+        timeout=5,
+    )
+    assert rejected.status_code == 422
+
+    unmapped = requests.post(
+        f"{base_url}/api/v1/notion-ingest/",
+        headers=auth_headers,
+        json={
+            "parent": {"type": "database_id", "database_id": "unmapped-database-id"},
+            "properties": {"名称": {"type": "title", "title": []}},
+            "idempotency_key": "unmapped-event-1",
+        },
+        timeout=5,
+    )
+    assert unmapped.status_code == 202, unmapped.text
+    assert unmapped.json()["business_type"] is None
+
+    connection = psycopg2.connect(
+        host="127.0.0.1",
+        port=int(__import__("os").environ.get("FUNCTIONAL_TEST_DB_PORT", "15432")),
+        user="functional",
+        password="functional",
+        dbname="functional",
+    )
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT count(*) FROM exercise_records")
+            assert cursor.fetchone()[0] == 1
+            cursor.execute("SELECT count(*) FROM notion_ingest_events")
+            assert cursor.fetchone()[0] == 2
+            cursor.execute("SELECT count(*) FROM notion_deliveries WHERE status = 'pending'")
+            assert cursor.fetchone()[0] == 2
+    connection.close()
 
 
 def test_deprecated_routes_are_unreachable(
