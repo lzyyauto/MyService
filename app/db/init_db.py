@@ -11,6 +11,45 @@ import app.models  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
+def _rename_legacy_exercise_records_table() -> None:
+    """将旧运动业务表原地迁移到稳定的 ``sport_record`` 名称。
+
+    部署入口仍会执行 ``create_all``，因此必须在建表前完成原地重命名；否则会并存一张
+    旧表与一张空的新表。正式生产升级仍由同名 Alembic revision 负责，此处仅覆盖既有
+    ``create_all`` 部署的兼容路径。
+    """
+    with engine.begin() as connection:
+        inspector = inspect(connection)
+        has_legacy_table = inspector.has_table("exercise_records")
+        has_sport_table = inspector.has_table("sport_record")
+        if not has_legacy_table:
+            return
+        if has_sport_table:
+            logger.warning(
+                "同时发现 exercise_records 与 sport_record；保留两表，等待人工确认后处理"
+            )
+            return
+
+        logger.warning("检测到旧运动业务表 exercise_records，正在原地重命名为 sport_record")
+        connection.execute(text("ALTER TABLE exercise_records RENAME TO sport_record"))
+        sport_columns = {
+            column["name"] for column in inspect(connection).get_columns("sport_record")
+        }
+        if "exercise_type" in sport_columns:
+            connection.execute(
+                text("ALTER TABLE sport_record RENAME COLUMN exercise_type TO sport_type")
+            )
+        for old_index, new_index in (
+            ("ix_exercise_records_user_id", "ix_sport_record_user_id"),
+            ("ix_exercise_records_source_event_id", "ix_sport_record_source_event_id"),
+            ("ix_exercise_records_occurred_at", "ix_sport_record_occurred_at"),
+            ("ix_exercise_records_occurred_on", "ix_sport_record_occurred_on"),
+        ):
+            connection.execute(
+                text(f"ALTER INDEX IF EXISTS {old_index} RENAME TO {new_index}")
+            )
+
+
 def _repair_legacy_notion_mapping_table() -> None:
     """补齐早期 create_all 创建的映射表列，保留已有映射行。
 
@@ -123,9 +162,9 @@ def _repair_legacy_notion_event_tables() -> None:
             "original_payload": "JSONB",
             "created_at": "BIGINT",
         },
-        "exercise_records": {
+        "sport_record": {
             "source_event_id": "UUID",
-            "exercise_type": "VARCHAR",
+            "sport_type": "VARCHAR",
             "duration": "DOUBLE PRECISION",
             "occurred_at": "TIMESTAMP WITH TIME ZONE",
             "occurred_on": "DATE",
@@ -174,6 +213,7 @@ def _repair_legacy_notion_event_tables() -> None:
 
 def init_db() -> None:
     # 创建缺失表；再对早期 create_all 留下的旧 Notion 表做窄范围兼容升级。
+    _rename_legacy_exercise_records_table()
     Base.metadata.create_all(bind=engine)
     _repair_legacy_notion_mapping_table()
     _repair_legacy_notion_event_tables()

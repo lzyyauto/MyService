@@ -154,10 +154,32 @@ def test_notion_ingest_maps_exercise_and_keeps_unmapped_events(
     )
     assert mapping.status_code == 200, mapping.text
 
+    connection = psycopg2.connect(
+        host="127.0.0.1",
+        port=int(__import__("os").environ.get("FUNCTIONAL_TEST_DB_PORT", "15432")),
+        user="functional",
+        password="functional",
+        dbname="functional",
+    )
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO notion_select_option_mappings (option_id, name) VALUES (%s, %s)",
+                ("exercise-option-running", "跑步"),
+            )
+    connection.close()
+
     payload = {
         "parent": {"type": "database_id", "database_id": database_id},
         "properties": {
-            "运动类型": {"type": "select", "select": {"name": "跑步"}},
+            "运动类型": {
+                "type": "select",
+                "select": {
+                    "id": "exercise-option-running",
+                    "name": "exercise-option-running",
+                    "color": "blue",
+                },
+            },
             "月份": {
                 "type": "title",
                 "title": [{"type": "text", "text": {"content": "09月"}}],
@@ -228,8 +250,8 @@ def test_notion_ingest_maps_exercise_and_keeps_unmapped_events(
     )
     with connection:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT count(*) FROM exercise_records")
-            assert cursor.fetchone()[0] == 1
+            cursor.execute("SELECT sport_type FROM sport_record")
+            assert cursor.fetchone()[0] == "跑步"
             cursor.execute("SELECT count(*) FROM notion_ingest_events")
             assert cursor.fetchone()[0] == 2
             cursor.execute("SELECT count(*) FROM notion_deliveries WHERE status = 'pending'")

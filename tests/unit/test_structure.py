@@ -6,11 +6,12 @@ import app.models  # noqa: F401, E402
 
 def test_all_models_are_registered() -> None:
     assert set(Base.metadata.tables) == {
-        "exercise_records",
+        "sport_record",
         "gtd_tasks",
         "notion_database_mappings",
         "notion_deliveries",
         "notion_ingest_events",
+        "notion_select_option_mappings",
         "rest_records",
         "users",
         "video_process_tasks",

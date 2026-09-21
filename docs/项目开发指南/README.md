@@ -72,7 +72,7 @@ FastAPI 和飞书 worker 共用代码仓库、配置体系和 Docker 镜像，�
 - `POST /api/v1/notion-ingest/` 接收标准 Notion 页面 JSON；数据库是唯一可信数据源；
 - 每次成功接收都会保存原始事件和持久化投递任务；未映射的 database ID 也会同步 Notion；
 - `notion_database_mappings` 将同一用户的 database ID 关联到业务类型、显示名称和说明；
-- 首个业务类型是 `exercise`，当前字段规则严格投影为 `exercise_records`；格式不符返回 `422`，
+- 首个业务类型是 `exercise`，按 Notion 选项 ID 映射后严格投影为 `sport_record`；格式不符返回 `422`，
   不创建事件也不投递；
 - `notion-delivery` 独立 worker 每项最多重试三次，最终失败保留证据并可通过 Bark 提醒。
 

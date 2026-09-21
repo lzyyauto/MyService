@@ -6,7 +6,11 @@ import pytest
 from fastapi import HTTPException
 
 from app.api.v1.endpoints import notion_ingest
-from app.models.notion_ingest import NotionDelivery, NotionIngestEvent
+from app.models.notion_ingest import (
+    NotionDelivery,
+    NotionIngestEvent,
+    NotionSelectOptionMapping,
+)
 from app.schemas.notion_ingest import NotionDatabaseMappingUpsert, NotionIngestRequest
 from app.services.notion_ingest import MappingValidationError, mapper_for_business_type, parse_mapping
 from app.workers import notion_delivery
@@ -16,7 +20,11 @@ def exercise_properties(**overrides):
     properties = {
         "运动类型": {
             "type": "select",
-            "select": {"name": "跑步"},
+            "select": {
+                "id": "notion-option-id",
+                "name": "跑步",
+                "color": "blue",
+            },
         },
         "月份": {
             "type": "title",
@@ -49,7 +57,7 @@ def notion_request(**overrides) -> NotionIngestRequest:
 def test_exercise_mapper_parses_standard_notion_properties() -> None:
     parsed = parse_mapping("exercise_notion_v1", exercise_properties())
 
-    assert parsed["exercise_type"] == "跑步"
+    assert parsed["sport_type_option_id"] == "notion-option-id"
     assert parsed["duration"] == 1.0
     assert parsed["occurred_at"].isoformat() == "2026-09-02T16:01:35+08:00"
     assert parsed["occurred_on"].isoformat() == "2026-09-02"
@@ -65,6 +73,44 @@ def test_exercise_mapper_rejects_invalid_mapped_input() -> None:
         parse_mapping(
             "exercise_notion_v1",
             exercise_properties(**{"时长": {"type": "number", "number": -1}}),
+        )
+
+
+def test_exercise_mapper_accepts_option_id_as_shortcut_name() -> None:
+    parsed = parse_mapping(
+        "exercise_notion_v1",
+        exercise_properties(
+            **{
+                "运动类型": {
+                    "type": "select",
+                    "select": {
+                        "id": "bb05a747-00a6-4c18-b7a2-32f834563dd6",
+                        "name": "bb05a747-00a6-4c18-b7a2-32f834563dd6",
+                        "color": "blue",
+                    },
+                }
+            }
+        ),
+    )
+
+    assert parsed["sport_type_option_id"] == "bb05a747-00a6-4c18-b7a2-32f834563dd6"
+
+
+def test_exercise_mapper_rejects_missing_option_id() -> None:
+    with pytest.raises(MappingValidationError, match="select.id"):
+        parse_mapping(
+            "exercise_notion_v1",
+            exercise_properties(
+                **{
+                    "运动类型": {
+                        "type": "select",
+                        "select": {
+                            "name": "跑步",
+                            "color": "blue",
+                        },
+                    }
+                }
+            ),
         )
 
 
@@ -99,12 +145,15 @@ class FakeQuery:
 
 
 class FakeDB:
-    def __init__(self, mapping=None):
+    def __init__(self, mapping=None, sport_type_mapping=None):
         self.mapping = mapping
+        self.sport_type_mapping = sport_type_mapping
         self.added = []
         self.committed = False
 
     def query(self, model):
+        if model is NotionSelectOptionMapping:
+            return FakeQuery(self.sport_type_mapping)
         return FakeQuery(self.mapping)
 
     def add(self, item):
@@ -150,7 +199,8 @@ async def test_invalid_mapped_event_is_rejected_before_writes() -> None:
             business_type="exercise",
             display_name="日常运动记录",
             mapper_key="exercise_notion_v1",
-        )
+        ),
+        sport_type_mapping=SimpleNamespace(name="跑步"),
     )
 
     with pytest.raises(HTTPException) as error:
@@ -173,7 +223,8 @@ async def test_mapped_exercise_event_writes_event_delivery_and_record() -> None:
             business_type="exercise",
             display_name="日常运动记录",
             mapper_key="exercise_notion_v1",
-        )
+        ),
+        sport_type_mapping=SimpleNamespace(name="跑步"),
     )
 
     result = await notion_ingest.ingest_notion_page(
@@ -187,8 +238,32 @@ async def test_mapped_exercise_event_writes_event_delivery_and_record() -> None:
     assert {type(item).__name__ for item in db.added} == {
         "NotionIngestEvent",
         "NotionDelivery",
-        "ExerciseRecord",
+        "SportRecord",
     }
+    sport_record = next(item for item in db.added if type(item).__name__ == "SportRecord")
+    assert sport_record.sport_type == "跑步"
+
+
+@pytest.mark.asyncio
+async def test_mapped_exercise_event_rejects_unknown_sport_type_option() -> None:
+    db = FakeDB(
+        mapping=SimpleNamespace(
+            business_type="exercise",
+            display_name="日常运动记录",
+            mapper_key="exercise_notion_v1",
+        )
+    )
+
+    with pytest.raises(HTTPException) as error:
+        await notion_ingest.ingest_notion_page(
+            request_in=notion_request(),
+            db=db,
+            current_user=SimpleNamespace(id="user-1"),
+        )
+
+    assert error.value.status_code == 422
+    assert "未配置运动类型" in error.value.detail
+    assert db.added == []
 
 
 @pytest.mark.asyncio

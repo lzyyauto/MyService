@@ -40,9 +40,9 @@ def _text_content(item: dict[str, Any], name: str) -> str:
 def _parse_exercise(properties: dict[str, dict[str, Any]]) -> dict[str, Any]:
     exercise = _required_property(properties, "运动类型", "select")
     select = exercise.get("select")
-    exercise_type = select.get("name") if isinstance(select, dict) else None
-    if not isinstance(exercise_type, str) or not exercise_type.strip():
-        raise MappingValidationError("属性“运动类型”必须包含 select.name")
+    select_id = select.get("id") if isinstance(select, dict) else None
+    if not isinstance(select_id, str) or not select_id.strip():
+        raise MappingValidationError("属性“运动类型”必须包含 select.id")
 
     duration_property = _required_property(properties, "时长", "number")
     duration = duration_property.get("number")
@@ -91,7 +91,7 @@ def _parse_exercise(properties: dict[str, dict[str, Any]]) -> dict[str, Any]:
             city = _text_content(rich_text[0], "城市")
 
     return {
-        "exercise_type": exercise_type.strip(),
+        "sport_type_option_id": select_id.strip(),
         "duration": float(duration),
         "occurred_at": occurred_at,
         "occurred_on": occurred_on,

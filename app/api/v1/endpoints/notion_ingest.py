@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.notion_ingest import (
-    ExerciseRecord,
     NotionDatabaseMapping,
     NotionDelivery,
     NotionIngestEvent,
+    NotionSelectOptionMapping,
+    SportRecord,
 )
 from app.models.user import User
 from app.schemas.notion_ingest import (
@@ -136,6 +137,18 @@ async def ingest_notion_page(
             parsed_record = parse_mapping(mapping.mapper_key, request_in.properties)
         except MappingValidationError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
+        sport_type_option_id = parsed_record.pop("sport_type_option_id")
+        sport_type_mapping = (
+            db.query(NotionSelectOptionMapping)
+            .filter(NotionSelectOptionMapping.option_id == sport_type_option_id)
+            .first()
+        )
+        if sport_type_mapping is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"未配置运动类型选项 ID “{sport_type_option_id}” 的名称映射",
+            )
+        parsed_record["sport_type"] = sport_type_mapping.name
 
     event = NotionIngestEvent(
         user_id=current_user.id,
@@ -157,7 +170,7 @@ async def ingest_notion_page(
         db.add(delivery)
         if parsed_record is not None:
             db.add(
-                ExerciseRecord(
+                SportRecord(
                     user_id=current_user.id,
                     source_event_id=event.id,
                     **parsed_record,

@@ -67,10 +67,19 @@ class NotionIngestEvent(Base):
     created_at = Column(BigInteger, default=_now_timestamp, nullable=False)
 
 
-class ExerciseRecord(Base):
+class NotionSelectOptionMapping(Base):
+    """全局唯一的 Notion select 选项 ID 到可读名称的映射。"""
+
+    __tablename__ = "notion_select_option_mappings"
+
+    option_id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+
+
+class SportRecord(Base):
     """从运动 Notion 页面严格解析出的本地业务记录。"""
 
-    __tablename__ = "exercise_records"
+    __tablename__ = "sport_record"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
@@ -81,7 +90,7 @@ class ExerciseRecord(Base):
         unique=True,
         index=True,
     )
-    exercise_type = Column(String, nullable=False)
+    sport_type = Column(String, nullable=False)
     duration = Column(Float, nullable=False)
     occurred_at = Column(DateTime(timezone=True), nullable=False, index=True)
     occurred_on = Column(Date, nullable=False, index=True)

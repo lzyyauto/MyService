@@ -1,0 +1,53 @@
+# 面向已有外部 PostgreSQL 的部署文件；本文件不包含 db 服务。
+# 保持为本地/部署环境专用文件，不提交到 Git。
+services:
+  web:
+    image: lzyyauto/myservice:latest
+    container_name: Myservice
+    network_mode: bridge
+    env_file:
+      - .env
+    ports:
+      - "${MYSERVICE_PORT:-20035}:8000"
+    restart: unless-stopped
+    init: true
+    command: >
+      sh -ec "python -c 'from app.db.init_db import init_db; init_db()' &&
+              exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  notion-delivery:
+    image: lzyyauto/myservice:latest
+    container_name: Myservice-NotionDelivery
+    network_mode: bridge
+    env_file:
+      - .env
+    restart: unless-stopped
+    init: true
+    depends_on:
+      web:
+        condition: service_healthy
+    command: >
+      sh -ec "exec python -m app.workers.notion_delivery"
+
+  feishu-inspiration:
+    image: lzyyauto/myservice:latest
+    container_name: Myservice-FeishuInspiration
+    network_mode: bridge
+    profiles:
+      - inspiration
+    env_file:
+      - .env
+    environment:
+      INSPIRATION_DOC_PATH: /app/data/inspirations.md
+    volumes:
+      - ${MYSERVICE_DATA_DIR:-/mnt/user/docker/myservices/data}:/app/data
+    restart: unless-stopped
+    init: true
+    command: >
+      sh -ec "exec python -m app.workers.feishu_inspiration"

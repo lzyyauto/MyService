@@ -35,21 +35,24 @@ Notion。PostgreSQL 是本地数据的唯一可信来源；Notion 是异步、�
 | 表 | 职责 |
 |---|---|
 | `notion_database_mappings` | 用户下 database ID 到业务类型、显示名称和说明的关系；同时保存内部 mapper 版本 |
+| `notion_select_option_mappings` | 全局唯一的 Notion select 选项 ID 到可读名称的映射 |
 | `notion_ingest_events` | 每个已接受请求的完整原始 JSON |
-| `exercise_records` | 严格解析出的单次运动事实，通过 `source_event_id` 关联事件 |
+| `sport_record` | 严格解析出的单次运动事实，通过 `source_event_id` 关联事件 |
 | `notion_deliveries` | Notion 投递载荷、重试、页面 ID 和失败摘要 |
 
 首个业务类型是 `exercise`；其当前内部 mapper 为 `exercise_notion_v1`，固定要求下列
 Notion properties：
 
-- `运动类型`: `select.name`；
+- `运动类型`: 读取 `select.id`，在 `notion_select_option_mappings` 查找对应 `name` 后写入
+  本地 `sport_record.sport_type`。快捷指令中的 `select.name` 和 `select.color` 均不参与
+  本地业务投影；未知 ID 返回 `422` 且不创建任何记录；
 - `时长`: 非负 `number`；
 - `记录时间`: 带时区的 `date.start`；
 - `日期`: `YYYY-MM-DD` 的 `date.start`；
 - `月份`: 非空 `title`；
 - `城市`: 可选 `rich_text`。
 
-这不是运行时按 JSON 动态建 SQL 表。`exercise_records` 是依据现有稳定运动载荷建立的固定
+这不是运行时按 JSON 动态建 SQL 表。`sport_record` 是依据现有稳定运动载荷建立的固定
 业务结构；载荷中的其他字段仍保存在原始事件并转发 Notion，但不会自动增加为业务表列。
 
 ## 4. 处理规则
