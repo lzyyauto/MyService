@@ -2,8 +2,7 @@
 # POSTGRES_HOST、POSTGRES_PORT、POSTGRES_USER、POSTGRES_PASSWORD、POSTGRES_DB 均来自 .env。
 services:
   migrate:
-    build: .
-    image: lzyyauto/myservice:latest
+    image: ${MYSERVICE_BACKEND_IMAGE:-lzyyauto/myservice}:${MYSERVICE_IMAGE_TAG:-latest}
     env_file:
       - .env
     restart: "no"
@@ -12,8 +11,7 @@ services:
       ["sh", "-ec", "python -m app.db.migration_baseline && alembic upgrade head"]
 
   web:
-    build: .
-    image: lzyyauto/myservice:latest
+    image: ${MYSERVICE_BACKEND_IMAGE:-lzyyauto/myservice}:${MYSERVICE_IMAGE_TAG:-latest}
     env_file:
       - .env
     ports:
@@ -33,8 +31,7 @@ services:
       start_period: 15s
 
   frontend:
-    build: ./frontend
-    image: lzyyauto/myservice-frontend:latest
+    image: ${MYSERVICE_FRONTEND_IMAGE:-lzyyauto/myservice-frontend}:${MYSERVICE_IMAGE_TAG:-latest}
     ports:
       - "${FRONTEND_PORT:-3000}:80"
     environment:
@@ -48,8 +45,7 @@ services:
     init: true
 
   notion-delivery:
-    build: .
-    image: lzyyauto/myservice:latest
+    image: ${MYSERVICE_BACKEND_IMAGE:-lzyyauto/myservice}:${MYSERVICE_IMAGE_TAG:-latest}
     env_file:
       - .env
     depends_on:
@@ -65,8 +61,7 @@ services:
   feishu-inspiration:
     profiles:
       - inspiration
-    build: .
-    image: lzyyauto/myservice:latest
+    image: ${MYSERVICE_BACKEND_IMAGE:-lzyyauto/myservice}:${MYSERVICE_IMAGE_TAG:-latest}
     env_file:
       - .env
     environment:

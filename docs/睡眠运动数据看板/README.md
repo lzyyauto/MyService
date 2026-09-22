@@ -59,6 +59,7 @@
 
 ```bash
 uv sync --locked
+uv run python -m app.db.migration_baseline
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
@@ -71,14 +72,17 @@ npm run dev
 本地前端会把 `/api/` 代理到 `http://127.0.0.1:8000`。后端单元测试
 `./scripts/test.sh unit`、前端 `npm run test` 与 `npm run build` 也都不需要 Docker。
 
-最终部署时，前端代码由 Nginx 提供静态文件，并把 `/api/` 反向代理到 FastAPI `web:8000`。
-Compose 中 `frontend` 是独立服务，默认端口为 `3000`，可用 `FRONTEND_PORT` 覆盖。
+最终部署时，前端静态文件已在 GitHub Actions 构建并封装进 Nginx 镜像；NAS 只拉取镜像，再把
+`/api/` 反向代理到 FastAPI `web:8000`。Compose 中 `frontend` 是独立服务，默认端口为 `3000`，
+可用 `FRONTEND_PORT` 覆盖。
 
 ```bash
-docker compose up --build -d web frontend
+docker compose pull web frontend
+docker compose up -d --wait web frontend
 ```
 
-外部 PostgreSQL 部署同样不新增数据库容器，只新增前端服务。
+外部 PostgreSQL 部署同样不新增数据库容器，只拉取并运行对应镜像。完整镜像标签和部署步骤见
+[`docs/容器化部署与本地运行/README.md`](../容器化部署与本地运行/README.md)。
 
 ## 6. 验证边界
 

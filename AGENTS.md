@@ -98,10 +98,13 @@ npm ci
 npm run test
 npm run build
 
-# Docker（默认 Compose 自带 PostgreSQL；外部数据库使用专用 Compose）
-docker compose up --build -d --wait
-docker compose --profile inspiration up --build -d --wait
-docker compose -f docker-compose.external-postgres.yml up --build -d --wait
+# Docker 部署（只拉取 GitHub Actions 发布的 Docker Hub 镜像；不在部署机编译源码）
+docker compose pull
+docker compose up -d --wait
+docker compose --profile inspiration pull
+docker compose --profile inspiration up -d --wait
+docker compose -f docker-compose.external-postgres.yml pull
+docker compose -f docker-compose.external-postgres.yml up -d --wait
 ```
 
 数据库命令：
@@ -209,6 +212,7 @@ API、看板或 Notion 映射业务中使用或展示。
 - 应用：`APP_NAME`、`DEBUG`、`ENVIRONMENT`
 - 公开调试接收器：`ENABLE_PUBLIC_REQUEST_DUMP`（默认 `false`）
 - 数据库：`POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB`、`POSTGRES_HOST`、`POSTGRES_PORT`
+- 部署镜像：`MYSERVICE_BACKEND_IMAGE`、`MYSERVICE_FRONTEND_IMAGE`、`MYSERVICE_IMAGE_TAG`
 - Notion：`NOTION_TOKEN`、`NOTION_SLEEP_DATABASE_ID`、`NOTION_WAKE_DATABASE_ID`
 - Notion 投递：`NOTION_DELIVERY_POLL_INTERVAL_SECONDS`、
   `NOTION_DELIVERY_RETRY_DELAY_SECONDS`、`NOTION_DELIVERY_LEASE_SECONDS`

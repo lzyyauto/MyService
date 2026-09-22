@@ -56,8 +56,12 @@ uv run python -m app.workers.feishu_inspiration
 Docker 启动：
 
 ```bash
-docker compose --profile inspiration up --build -d
+docker compose --profile inspiration pull
+docker compose --profile inspiration up -d --wait
 ```
+
+部署 Compose 仅拉取 GitHub Actions 发布的镜像，NAS 不需要该仓库的源码；镜像标签与完整部署说明见
+[`docs/容器化部署与本地运行/README.md`](../容器化部署与本地运行/README.md)。
 
 ## 4. 验证
 

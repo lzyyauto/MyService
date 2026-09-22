@@ -117,7 +117,8 @@ uv run alembic heads
 ### Docker 功能测试与最终部署
 
 Docker 不是本地开发的前提；它用于隔离的一次性 PostgreSQL/真实 HTTP 功能测试，以及最终
-以容器部署 API、worker 与前端。
+以容器部署 API、worker 与前端。部署 Compose 只引用 Docker Hub 镜像，不包含源码构建；镜像由
+GitHub Actions 在推送 `main` 或版本标签时构建并发布。
 
 ```bash
 # 一次性测试库和真实 HTTP 链路；不会读取正式数据库或访问真实飞书、Notion、Bark
@@ -126,14 +127,17 @@ Docker 不是本地开发的前提；它用于隔离的一次性 PostgreSQL/真�
 # 依次执行本地单元测试与 Docker 功能测试
 ./scripts/test.sh all
 
-# Docker 自带 PostgreSQL：迁移成功后启动前端、API 与 Notion 投递 worker
-docker compose up --build -d --wait
+# NAS/服务器：先在 .env 固定同一提交的 sha-<短 SHA> 镜像标签，再拉取并启动
+docker compose pull
+docker compose up -d --wait
 
 # 需要飞书灵感采集时，显式启用可选 profile
-docker compose --profile inspiration up --build -d --wait
+docker compose --profile inspiration pull
+docker compose --profile inspiration up -d --wait
 
 # 使用已有外部 PostgreSQL：不会创建 db 容器
-docker compose -f docker-compose.external-postgres.yml up --build -d --wait
+docker compose -f docker-compose.external-postgres.yml pull
+docker compose -f docker-compose.external-postgres.yml up -d --wait
 ```
 
 容器部署后的默认访问地址为 `http://<服务器地址>:3000/` 和
@@ -220,8 +224,9 @@ ENABLE_PUBLIC_REQUEST_DUMP=false
 # 本地
 uv run python -m app.workers.feishu_inspiration
 
-# Docker；inspiration 是可选 profile
-docker compose --profile inspiration up --build -d
+# Docker；inspiration 是可选 profile，部署端只拉取已发布镜像
+docker compose --profile inspiration pull
+docker compose --profile inspiration up -d --wait
 ```
 
 采集结果默认保存在 `data/inspirations.md`。`data/` 是运行时数据目录，不纳入 Git。

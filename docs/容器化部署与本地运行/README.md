@@ -5,10 +5,32 @@
 | 场景 | 数据库来源 | 使用的 Compose 文件 |
 | --- | --- | --- |
 | 本机直接运行 | 已有本机或远程 PostgreSQL | 不使用 Compose |
-| Docker 自带数据库 | 本 Compose 创建并持久化 PostgreSQL | `docker-compose.yml` |
-| Docker 使用外部数据库 | 已有 PostgreSQL，Compose 不创建数据库 | `docker-compose.external-postgres.yml` |
+| Docker 自带数据库 | 本 Compose 创建并持久化 PostgreSQL | `docker-compose.yml`，只拉取镜像 |
+| Docker 使用外部数据库 | 已有 PostgreSQL，Compose 不创建数据库 | `docker-compose.external-postgres.yml`，只拉取镜像 |
 
 不要同时启动两份部署 Compose。它们的服务名和默认前端端口相同，且是两种数据库拓扑的替代方案。
+
+## 镜像发布与版本选择
+
+部署 Compose **没有** `build:` 字段，NAS 或服务器无需克隆源码，也不会在部署时运行 Python、npm
+或 Vite 构建。`.github/workflows/build-push.yml` 会在推送 `main`、推送 `v*` 版本标签，或手动运行时，
+构建并发布公开 Docker Hub 多架构镜像：
+
+- `lzyyauto/myservice`：迁移、API 和两个 worker 共用；
+- `lzyyauto/myservice-frontend`：静态前端与 Nginx；
+- 同一提交会获得 `sha-<短 SHA>` 标签；`main` 额外获得 `latest`，版本标签保留 `v*` 标签。
+
+Docker Hub 仓库是公开的，部署机不需要登录。生产环境应在 `.env` 固定同一提交的 SHA 标签，避免
+`latest` 在下一次发布后悄然变化：
+
+```dotenv
+MYSERVICE_BACKEND_IMAGE=lzyyauto/myservice
+MYSERVICE_FRONTEND_IMAGE=lzyyauto/myservice-frontend
+MYSERVICE_IMAGE_TAG=sha-abcdef0
+```
+
+这里的 `sha-abcdef0` 以对应 GitHub Actions 发布日志显示的实际标签为准。开发者可以在任意有源码的
+机器提交代码；构建由 GitHub Actions 完成，部署机只需要 Compose 文件、`.env` 和需要持久化的 `data/`。
 
 ## 1. 本机直接运行
 
@@ -53,10 +75,11 @@ uv run python -m app.workers.feishu_inspiration
 
 1. 创建 `.env`。其中 `POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB` 必填；
    `POSTGRES_HOST` 与 `POSTGRES_PORT` 会被 Compose 覆盖为内部的 `db:5432`。
-2. 首次部署或升级后执行：
+2. 首次部署或升级后拉取镜像并执行：
 
 ```bash
-docker compose up --build -d --wait
+docker compose pull
+docker compose up -d --wait
 docker compose ps
 ```
 
@@ -69,7 +92,8 @@ HTTP 端口，因此以进程退出后的自动重启监测其可用性，不套
 需要飞书灵感采集时显式启用 profile：
 
 ```bash
-docker compose --profile inspiration up --build -d --wait
+docker compose --profile inspiration pull
+docker compose --profile inspiration up -d --wait
 ```
 
 灵感 Markdown 默认挂载在 `./data`；可在 `.env` 设置 `MYSERVICE_DATA_DIR` 改为持久化宿主机目录。
@@ -82,7 +106,8 @@ docker compose --profile inspiration up --build -d --wait
 部署前必须先备份外部数据库，并从部署主机确认该地址可访问。然后执行：
 
 ```bash
-docker compose -f docker-compose.external-postgres.yml up --build -d --wait
+docker compose -f docker-compose.external-postgres.yml pull
+docker compose -f docker-compose.external-postgres.yml up -d --wait
 docker compose -f docker-compose.external-postgres.yml ps
 ```
 
@@ -91,7 +116,9 @@ API 默认发布在 `MYSERVICE_PORT`（默认 `20035`），前端发布在 `FRON
 
 ```bash
 docker compose -f docker-compose.external-postgres.yml \
-  --profile inspiration up --build -d --wait
+  --profile inspiration pull
+docker compose -f docker-compose.external-postgres.yml \
+  --profile inspiration up -d --wait
 ```
 
 外部数据库不可达或迁移失败时，`migrate` 会失败，依赖它的 API 与 Notion worker 不会启动；先检查
@@ -99,7 +126,8 @@ docker compose -f docker-compose.external-postgres.yml \
 
 ## 4. 验证、升级与停止
 
-Docker 功能测试使用独立 PostgreSQL 和独立 Compose 项目，不读取 `.env` 中的真实数据库：
+Docker 功能测试使用独立 PostgreSQL 和独立 Compose 项目，不读取 `.env` 中的真实数据库。它保留
+`build:` 以测试当前工作区源码；这与只拉取镜像的 NAS 部署入口不同：
 
 ```bash
 ./scripts/test.sh unit
