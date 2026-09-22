@@ -124,6 +124,30 @@ docker compose -f docker-compose.external-postgres.yml \
 外部数据库不可达或迁移失败时，`migrate` 会失败，依赖它的 API 与 Notion worker 不会启动；先检查
 `docker compose -f docker-compose.external-postgres.yml logs migrate`，不要通过重置数据库绕过该失败。
 
+### 旧 `create_all` 数据库的版本标记对齐
+
+早期部署曾在应用启动时使用 `create_all` 建表，之后才开始记录 Alembic revision。这类数据库可能已经
+拥有 `notion_database_mappings`、`sport_record` 等新表和字段，但 `alembic_version` 仍停留在更早版本。
+此时直接升级会报 `DuplicateTable`，例如 `relation "notion_database_mappings" already exists`。
+
+**不得删除表或清空数据库。** 先完成可恢复备份，并核对表、字段、索引与当前 head 的语义一致；确认后，
+仅更新 Alembic 的版本标记，再正常启动：
+
+```bash
+# 当前 head 应显示为 20260922_sport_details
+docker compose -f docker-compose.external-postgres.yml run --rm --no-deps \
+  migrate alembic heads
+
+# 仅记录已具备的结构；不执行建表、删表或数据转换
+docker compose -f docker-compose.external-postgres.yml run --rm --no-deps \
+  migrate alembic stamp 20260922_sport_details
+
+docker compose -f docker-compose.external-postgres.yml up -d --wait
+```
+
+若缺任一表、字段或唯一索引，或无法确认该库由旧 `create_all` 创建，停止在这里并先恢复/核对备份，
+不得使用 `stamp` 跳过真实迁移。
+
 ## 4. 验证、升级与停止
 
 Docker 功能测试使用独立 PostgreSQL 和独立 Compose 项目，不读取 `.env` 中的真实数据库。它保留

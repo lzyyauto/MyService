@@ -231,6 +231,9 @@ GTD、Telegram 下载、视频和旧 AI 配置字段仅在 `Settings` 中兼容�
 
 1. Notion 统一采集迁移已合并为一个 head。生产升级前先检查 `alembic current`、完成
    数据库备份；不得直接重置有数据的数据库。
+   早期 `create_all` 数据库若表结构已在当前 head、但版本标记落后，必须先备份并人工核对后使用
+   `alembic stamp` 对齐；不得因 `DuplicateTable` 自动跳过或删除既有表，详见
+   `docs/容器化部署与本地运行/README.md`。
 2. PostgreSQL `zrest` 存在 collation 版本提示，处理前必须备份并评估索引重建。
 3. 部分 Pydantic Schema 仍使用 v1 兼容写法，会产生弃用警告。
 4. Docker daemon 未运行时只能执行单元测试和本地飞书管道测试，无法执行完整功能测试。
