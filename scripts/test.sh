@@ -18,7 +18,7 @@ run_unit_tests() {
   local migration_head_count
   migration_head_count="$(uv run alembic heads | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
   if [[ "$migration_head_count" -ne 1 ]]; then
-    echo "警告：Alembic 当前有 ${migration_head_count} 个 head，功能测试暂用空库 create_all。" >&2
+    echo "警告：Alembic 当前有 ${migration_head_count} 个 head，功能测试的 alembic upgrade head 可能存在歧义。" >&2
     if [[ "${STRICT_MIGRATIONS:-0}" == "1" ]]; then
       echo "错误：STRICT_MIGRATIONS=1，不允许多个迁移 head。" >&2
       exit 1

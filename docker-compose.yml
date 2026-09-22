@@ -1,79 +1,112 @@
+# 默认部署：本 Compose 自带 PostgreSQL。生产数据库不会暴露到宿主机端口。
+# 如需使用已有 PostgreSQL，请改用 docker-compose.external-postgres.yml。
 services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  migrate:
+    build: .
+    image: lzyyauto/myservice:latest
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    init: true
+    command:
+      ["sh", "-ec", "python -m app.db.migration_baseline && alembic upgrade head"]
+
   web:
     build: .
     image: lzyyauto/myservice:latest
-    container_name: Myservice
     env_file:
       - .env
     ports:
       - "${PORT:-8000}:8000"
     environment:
-      - PYTHONPATH=/app
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - ENABLE_PUBLIC_REQUEST_DUMP=${ENABLE_PUBLIC_REQUEST_DUMP:-false}
-      # 你可以加更多自定义环境变量
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      ENABLE_PUBLIC_REQUEST_DUMP: ${ENABLE_PUBLIC_REQUEST_DUMP:-false}
     depends_on:
-      - db
-    volumes:
-      - .:/app  # 只建议开发用，生产建议去掉
-      - /app/.venv  # 避免宿主机虚拟环境覆盖容器内 Linux 环境
+      migrate:
+        condition: service_completed_successfully
+        restart: true
     restart: unless-stopped
-    command: >
-      sh -c "python -c 'from app.db.init_db import init_db; init_db()' &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000"
-    # 生产环境建议去掉 --reload
+    init: true
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/ >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    build: ./frontend
+    image: lzyyauto/myservice-frontend:latest
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      BACKEND_UPSTREAM: web:8000
+      NGINX_ENVSUBST_FILTER: BACKEND_UPSTREAM
+    depends_on:
+      web:
+        condition: service_healthy
+        restart: true
+    restart: unless-stopped
+    init: true
 
   notion-delivery:
     build: .
     image: lzyyauto/myservice:latest
-    container_name: NotionDelivery
     env_file:
       - .env
     environment:
-      - PYTHONPATH=/app
-      - POSTGRES_HOST=db
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
     depends_on:
-      - db
-    volumes:
-      - .:/app  # 只建议开发用，生产建议去掉
-      - /app/.venv
+      migrate:
+        condition: service_completed_successfully
+        restart: true
     restart: unless-stopped
-    command: >
-      sh -c "python -c 'from app.db.init_db import init_db; init_db()' &&
-             python -m app.workers.notion_delivery"
+    init: true
+    healthcheck:
+      disable: true
+    command: ["python", "-m", "app.workers.notion_delivery"]
 
   feishu-inspiration:
     profiles:
       - inspiration
     build: .
     image: lzyyauto/myservice:latest
-    container_name: FeishuInspiration
     env_file:
       - .env
     environment:
-      - PYTHONPATH=/app
-      - INSPIRATION_DOC_PATH=/app/data/inspirations.md
+      INSPIRATION_DOC_PATH: /app/data/inspirations.md
     volumes:
-      - ./data:/app/data
+      - ${MYSERVICE_DATA_DIR:-./data}:/app/data
     restart: unless-stopped
-    command: python -m app.workers.feishu_inspiration
-
-  db:
-    image: postgres:15
-    container_name: Postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    restart: unless-stopped
+    init: true
+    healthcheck:
+      disable: true
+    command: ["python", "-m", "app.workers.feishu_inspiration"]
 
 volumes:
   postgres_data:

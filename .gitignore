@@ -62,6 +62,8 @@ data/
 .env.test.local
 .env.production.local
 .cache/
+frontend/node_modules/
+frontend/dist/
 
 #AI
 .claude/

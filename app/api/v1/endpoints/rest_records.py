@@ -1,21 +1,88 @@
 import asyncio
 import logging
-from datetime import datetime
-from typing import List
+import math
+from collections import Counter, defaultdict
+from datetime import date, datetime, timedelta
+from typing import List, Literal
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.rest_record import RestRecord as RestRecordModel
 from app.models.user import User
+from app.schemas.dashboard import (
+    DeleteSleepSessionResponse,
+    SleepDashboardResponse,
+)
 from app.schemas.rest_record import (AnnualSummaryResponse,
                                      AnnualSummaryTableResponse, RestRecord,
                                      RestRecordCreate, to_cn_timezone)
+from app.services.rest_sessions import (
+    CN_TIMEZONE,
+    local_datetime,
+    pair_rest_events,
+    session_payload,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+AUTO_REANCHOR_SECONDS = 12 * 60 * 60
+AUTO_DUPLICATE_GUARD_SECONDS = 2 * 60
+SLEEP_WINDOW_START_HOUR = 21
+SLEEP_WINDOW_END_HOUR = 5
+HEATMAP_HISTORY_YEARS = 3
+
+
+def _current_cn_time() -> datetime:
+    """返回用于休息事件判定和落库的当前北京时间。"""
+    return datetime.now(tz=CN_TIMEZONE)
+
+
+def _is_sleep_window(current_time: datetime) -> bool:
+    """21:00（含）至次日 05:00（不含）属于用户确认的入睡窗口。"""
+    return (
+        current_time.hour >= SLEEP_WINDOW_START_HOUR
+        or current_time.hour < SLEEP_WINDOW_END_HOUR
+    )
+
+
+def _infer_rest_type(
+    requested_type: int | None,
+    last_record: RestRecordModel | None,
+    current_time: datetime,
+    current_timestamp: int,
+) -> int:
+    """在快捷指令未提交类型时，按短间隔切换和长间隔作息窗口判定类型。"""
+    if requested_type is not None:
+        return requested_type
+
+    if last_record is None:
+        return (
+            RestRecordModel.REST_TYPE_SLEEP
+            if _is_sleep_window(current_time)
+            else RestRecordModel.REST_TYPE_WAKE_UP
+        )
+
+    elapsed_seconds = current_timestamp - last_record.rest_time
+    if elapsed_seconds < AUTO_DUPLICATE_GUARD_SECONDS:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="疑似重复打卡：未指定类型的提交距上一条记录不足 2 分钟",
+        )
+
+    if elapsed_seconds > AUTO_REANCHOR_SECONDS:
+        return (
+            RestRecordModel.REST_TYPE_SLEEP
+            if _is_sleep_window(current_time)
+            else RestRecordModel.REST_TYPE_WAKE_UP
+        )
+
+    return 1 - last_record.rest_type
 
 
 async def sync_rest_record_to_notion(
@@ -89,6 +156,8 @@ def schedule_rest_record_sync(
     - **休息类型**:
         - 0: 睡眠
         - 1: 起床
+        - 未提交时：距上一条记录超过 12 小时则按北京时间 21:00–05:00 重新判定，
+          其余情况按上一条类型切换
     - **位置信息**:
         - 可选填写 WiFi 名称、经纬度和城市信息
     """,
@@ -98,6 +167,9 @@ def schedule_rest_record_sync(
                  },
                  401: {
                      "description": "未授权"
+                 },
+                 409: {
+                     "description": "疑似重复的自动打卡"
                  },
                  422: {
                      "description": "请求参数验证失败"
@@ -116,22 +188,24 @@ async def create_rest_record(
     - 0: 睡眠
     - 1: 起床
     """
-    # 1. 确定休息类型
-    rest_type = rest_record_in.rest_type
-    if rest_type is None:
-        # 获取最新的一条记录来判断
+    # 1. 生成本次业务时间；自动判定必须使用 rest_time 而非数据库写入时间。
+    cn_now = _current_cn_time()
+    rest_time_ts = int(cn_now.timestamp())
+
+    # 2. 确定休息类型。显式类型优先；快捷指令省略类型时按个人作息自动纠偏。
+    last_record = None
+    if rest_record_in.rest_type is None:
         last_record = db.query(RestRecordModel).filter(
             RestRecordModel.user_id == current_user.id
         ).order_by(RestRecordModel.rest_time.desc()).first()
-        
-        if last_record:
-            rest_type = 1 - last_record.rest_type
-        else:
-            rest_type = 0  # 默认第一条是睡眠
+    rest_type = _infer_rest_type(
+        rest_record_in.rest_type,
+        last_record,
+        cn_now,
+        rest_time_ts,
+    )
 
-    # 2. 处理时间（修复时区问题：确保 month_str 与 rest_time 统一基于北京时间）
-    cn_now = to_cn_timezone(int(datetime.now().timestamp()))
-    rest_time_ts = int(cn_now.timestamp())
+    # 3. month_str 与 rest_time 统一基于北京时间。
     month_str = cn_now.strftime('%m月')
 
     rest_record = RestRecordModel(user_id=current_user.id,
@@ -187,6 +261,266 @@ async def get_rest_records(*,
     )
 
 
+def _dashboard_date_range(
+    scope: Literal["month", "year", "all"],
+    period: str | None,
+) -> tuple[date | None, date | None, str | None]:
+    today = datetime.now(tz=CN_TIMEZONE).date()
+    try:
+        if scope == "month":
+            selected = datetime.strptime(period or today.strftime("%Y-%m"), "%Y-%m").date()
+            start = selected.replace(day=1)
+            next_month = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+            return start, next_month - timedelta(days=1), start.strftime("%Y-%m")
+        if scope == "year":
+            selected_year = int(period or today.year)
+            if selected_year < 1970 or selected_year > 2100:
+                raise ValueError
+            return date(selected_year, 1, 1), date(selected_year, 12, 31), str(selected_year)
+    except (TypeError, ValueError) as error:
+        expected = "YYYY-MM" if scope == "month" else "YYYY"
+        raise HTTPException(status_code=422, detail=f"period 必须使用 {expected} 格式") from error
+    return None, None, None
+
+
+def _recent_history_start(today: date) -> date:
+    """返回滚动“最近三年”热力图的起始日，兼容闰日。"""
+    try:
+        return today.replace(year=today.year - HEATMAP_HISTORY_YEARS)
+    except ValueError:
+        return today.replace(year=today.year - HEATMAP_HISTORY_YEARS, day=28)
+
+
+def _clock_seconds(timestamp: int, *, sleep_time: bool = False) -> int:
+    """将睡前凌晨时刻置于当晚 24:00 之后，便于比较作息时间。"""
+    local = local_datetime(timestamp)
+    value = local.hour * 3600 + local.minute * 60 + local.second
+    return value + 24 * 3600 if sleep_time and local.hour < 12 else value
+
+
+def _format_clock_time(seconds: int) -> str:
+    seconds %= 24 * 3600
+    return f"{seconds // 3600:02d}:{(seconds % 3600) // 60:02d}"
+
+
+def _average_clock_time(timestamps: list[int], *, sleep_time: bool = False) -> str | None:
+    if not timestamps:
+        return None
+    average = int(sum(_clock_seconds(timestamp, sleep_time=sleep_time) for timestamp in timestamps) / len(timestamps))
+    return _format_clock_time(average)
+
+
+@router.get(
+    "/sessions",
+    response_model=SleepDashboardResponse,
+    summary="查询睡眠会话看板",
+)
+async def get_sleep_sessions(
+    scope: Literal["month", "year", "all"] = Query("month"),
+    period: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SleepDashboardResponse:
+    start, end, normalized_period = _dashboard_date_range(scope, period)
+    records = (
+        db.query(RestRecordModel)
+        .filter(RestRecordModel.user_id == current_user.id)
+        .order_by(RestRecordModel.rest_time.asc())
+        .all()
+    )
+    sessions = pair_rest_events(records)
+    if start is not None and end is not None:
+        sessions = [item for item in sessions if start <= item.sleep_date <= end]
+    sessions.sort(
+        key=lambda item: (item.sleep_date, (item.sleep or item.wake).rest_time),
+        reverse=True,
+    )
+
+    # 原始缺端事件会保留在 records 中供用户修正或删除，但不能污染任何时长、
+    # 作息时间和热力统计。pagination 仍按全部会话计算，以便错误记录可被找到。
+    complete = [item for item in sessions if item.is_complete]
+    incomplete = [item for item in sessions if not item.is_complete]
+    durations = [item.duration_hours for item in complete if item.duration_hours is not None]
+    # “近三年”入口的统计和分页仍覆盖全部历史；只对热力图裁剪日期，
+    # 防止一次响应和浏览器 DOM 随多年数据无限增长。
+    heatmap_sessions = sessions
+    if scope == "all":
+        heatmap_start = _recent_history_start(datetime.now(tz=CN_TIMEZONE).date())
+        heatmap_sessions = [
+            item for item in sessions if item.sleep_date >= heatmap_start
+        ]
+
+    daily = defaultdict(
+        lambda: {"duration": 0.0, "sessions": 0, "complete": 0, "errors": 0}
+    )
+    for item in heatmap_sessions:
+        bucket = daily[item.sleep_date]
+        if item.is_complete and item.duration_hours is not None:
+            bucket["sessions"] += 1
+            bucket["duration"] += item.duration_hours
+            bucket["complete"] += 1
+        else:
+            bucket["errors"] += 1
+
+    total = len(complete)
+    longest_duration = max(durations) if durations else None
+    earliest_sleep_value = min(
+        (_clock_seconds(item.sleep.rest_time, sleep_time=True) for item in complete if item.sleep),
+        default=None,
+    )
+    earliest_wake_value = min(
+        (_clock_seconds(item.wake.rest_time) for item in complete if item.wake),
+        default=None,
+    )
+    longest_session_ids = {
+        item.anchor_id
+        for item in complete
+        if longest_duration is not None and item.duration_hours == longest_duration
+    }
+    earliest_sleep_ids = {
+        item.anchor_id
+        for item in complete
+        if item.sleep is not None
+        and earliest_sleep_value is not None
+        and _clock_seconds(item.sleep.rest_time, sleep_time=True) == earliest_sleep_value
+    }
+    earliest_wake_ids = {
+        item.anchor_id
+        for item in complete
+        if item.wake is not None
+        and earliest_wake_value is not None
+        and _clock_seconds(item.wake.rest_time) == earliest_wake_value
+    }
+    longest_session = next(
+        (item for item in complete if item.anchor_id in longest_session_ids), None
+    )
+    earliest_sleep = next(
+        (item for item in complete if item.anchor_id in earliest_sleep_ids), None
+    )
+    earliest_wake = next(
+        (item for item in complete if item.anchor_id in earliest_wake_ids), None
+    )
+    wake_city_ranking = Counter(
+        item.wake.city for item in complete if item.wake and item.wake.city
+    ).most_common(3)
+    offset = (page - 1) * page_size
+    page_sessions = sessions[offset:offset + page_size]
+    response = {
+        "scope": scope,
+        "period": normalized_period,
+        "summary": {
+            "total_sessions": total,
+            "complete_sessions": len(complete),
+            "incomplete_sessions": len(incomplete),
+            "average_duration_hours": round(sum(durations) / len(durations), 2) if durations else None,
+            "longest_duration_hours": round(longest_duration, 2) if longest_duration is not None else None,
+            "shortest_duration_hours": round(min(durations), 2) if durations else None,
+            "average_sleep_time": _average_clock_time(
+                [item.sleep.rest_time for item in complete if item.sleep], sleep_time=True
+            ),
+            "average_wake_time": _average_clock_time(
+                [item.wake.rest_time for item in complete if item.wake]
+            ),
+            "longest_session": (
+                {
+                    "date": longest_session.sleep_date,
+                    "duration_hours": round(longest_session.duration_hours, 2),
+                }
+                if longest_session and longest_session.duration_hours is not None
+                else None
+            ),
+            "earliest_sleep": (
+                {
+                    "date": earliest_sleep.sleep_date,
+                    "time": _format_clock_time(_clock_seconds(earliest_sleep.sleep.rest_time, sleep_time=True)),
+                }
+                if earliest_sleep and earliest_sleep.sleep is not None
+                else None
+            ),
+            "earliest_wake": (
+                {
+                    "date": earliest_wake.sleep_date,
+                    "time": _format_clock_time(_clock_seconds(earliest_wake.wake.rest_time)),
+                }
+                if earliest_wake and earliest_wake.wake is not None
+                else None
+            ),
+            "wake_city_ranking": [
+                {"city": city, "count": count} for city, count in wake_city_ranking
+            ],
+        },
+        "heatmap": [
+            {
+                "date": day,
+                "duration_hours": round(values["duration"], 2) if values["complete"] else None,
+                "session_count": values["sessions"],
+                "complete_count": values["complete"],
+                "error_count": values["errors"],
+                "is_longest_session": day in {
+                    item.sleep_date for item in complete if item.anchor_id in longest_session_ids
+                },
+                "is_earliest_sleep": day in {
+                    item.sleep_date for item in complete if item.anchor_id in earliest_sleep_ids
+                },
+                "is_earliest_wake": day in {
+                    item.sleep_date for item in complete if item.anchor_id in earliest_wake_ids
+                },
+            }
+            for day, values in sorted(daily.items())
+        ],
+        "records": [session_payload(item) for item in page_sessions],
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_items": len(sessions),
+            "total_pages": math.ceil(len(sessions) / page_size) if sessions else 0,
+        },
+    }
+    return SleepDashboardResponse.model_validate(response)
+
+
+@router.delete(
+    "/sessions/{anchor_record_id}",
+    response_model=DeleteSleepSessionResponse,
+    summary="删除本地睡眠会话",
+)
+async def delete_sleep_session(
+    anchor_record_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DeleteSleepSessionResponse:
+    records = (
+        db.query(RestRecordModel)
+        .filter(RestRecordModel.user_id == current_user.id)
+        .order_by(RestRecordModel.rest_time.asc())
+        .all()
+    )
+    target = next(
+        (
+            item
+            for item in pair_rest_events(records)
+            if anchor_record_id in {
+                getattr(item.sleep, "id", None),
+                getattr(item.wake, "id", None),
+            }
+        ),
+        None,
+    )
+    if target is None:
+        raise HTTPException(status_code=404, detail="未找到该睡眠会话")
+
+    deleted = [record for record in (target.sleep, target.wake) if record is not None]
+    for record in deleted:
+        db.delete(record)
+    db.commit()
+    return DeleteSleepSessionResponse(
+        deleted_record_ids=[record.id for record in deleted],
+        deleted_count=len(deleted),
+    )
+
+
 @router.get("/annual-summary/{year}/table",
             response_model=AnnualSummaryTableResponse,
             summary="获取年度睡眠总结明细表",
@@ -196,71 +530,25 @@ async def get_annual_summary_table(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> AnnualSummaryTableResponse:
-    # 复用统计算法中的配对逻辑
-    from datetime import date, timedelta, timezone
-    tz_cn = timezone(timedelta(hours=8))
-    start_ts = int(datetime.strptime(f"{year}-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz_cn).timestamp())
-    end_ts = int(datetime.strptime(f"{year}-12-31 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz_cn).timestamp())
+    # 睡眠日按起床自然日跨年，因此先投影全部事件再按起床年过滤。
     records = db.query(RestRecordModel).filter(
         RestRecordModel.user_id == current_user.id,
-        RestRecordModel.rest_time >= start_ts,
-        RestRecordModel.rest_time <= end_ts
     ).order_by(RestRecordModel.rest_time.asc()).all()
-
-    if not records:
-        return {"year": str(year), "count": 0, "records": []}
-
-    # 核心配对算法
     sessions = []
-    i = 0
-    used_records = set()
-    while i < len(records):
-        if i in used_records:
-            i += 1
+    for item in pair_rest_events(records):
+        if item.sleep_date.year != year:
             continue
-        
-        r = records[i]
-        if r.rest_type == 0: # 睡眠
-            found_wake = False
-            for j in range(i + 1, min(i + 10, len(records))):
-                if records[j].rest_type == 1: # 起床
-                    dt_s = to_cn_timezone(r.rest_time)
-                    dt_w = to_cn_timezone(records[j].rest_time)
-                    dur = (records[j].rest_time - r.rest_time) / 3600.0
-                    if 0 < dur < 24:
-                        sessions.append({
-                            "date": dt_w.strftime('%Y-%m-%d'),
-                            "sleep_time": dt_s.strftime('%H:%M'),
-                            "wake_time": dt_w.strftime('%H:%M'),
-                            "duration": round(dur, 2),
-                            "city": records[j].city or r.city,
-                            "wifi": records[j].wifi_name or r.wifi_name
-                        })
-                        used_records.add(i)
-                        used_records.add(j)
-                        found_wake = True
-                        break
-            if not found_wake:
-                dt_s = to_cn_timezone(r.rest_time)
-                sessions.append({
-                    "date": dt_s.strftime('%Y-%m-%d'),
-                    "sleep_time": dt_s.strftime('%H:%M'),
-                    "wake_time": None,
-                    "duration": None,
-                    "city": r.city,
-                    "wifi": r.wifi_name
-                })
-        else: # 未配对的起床
-            dt_w = to_cn_timezone(r.rest_time)
-            sessions.append({
-                "date": dt_w.strftime('%Y-%m-%d'),
-                "sleep_time": None,
-                "wake_time": dt_w.strftime('%H:%M'),
-                "duration": None,
-                "city": r.city,
-                "wifi": r.wifi_name
-            })
-        i += 1
+        sleep_at = local_datetime(item.sleep.rest_time) if item.sleep else None
+        wake_at = local_datetime(item.wake.rest_time) if item.wake else None
+        sessions.append({
+            "date": item.sleep_date.isoformat(),
+            "sleep_time": sleep_at.strftime("%H:%M") if sleep_at else None,
+            "wake_time": wake_at.strftime("%H:%M") if wake_at else None,
+            "duration": round(item.duration_hours, 2) if item.duration_hours is not None else None,
+            "city": getattr(item.wake, "city", None) or getattr(item.sleep, "city", None),
+            "wifi": getattr(item.wake, "wifi_name", None) or getattr(item.sleep, "wifi_name", None),
+            "error_code": item.error_code,
+        })
 
     return {
         "year": str(year),
@@ -280,53 +568,39 @@ async def get_annual_summary(
 ) -> AnnualSummaryResponse:
     import statistics
     from collections import Counter
-    from datetime import date, timedelta, timezone
-    tz_cn = timezone(timedelta(hours=8))
-
-    start_ts = int(datetime.strptime(f"{year}-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz_cn).timestamp())
-    end_ts = int(datetime.strptime(f"{year}-12-31 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz_cn).timestamp())
 
     records = db.query(RestRecordModel).filter(
         RestRecordModel.user_id == current_user.id,
-        RestRecordModel.rest_time >= start_ts,
-        RestRecordModel.rest_time <= end_ts
     ).order_by(RestRecordModel.rest_time.asc()).all()
 
     if not records:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail=f"未找到 {year} 年的休息记录")
 
-    # --- 改进的配对与统计逻辑 ---
-    sessions = []
-    i = 0
-    used_records = set()
-    while i < len(records):
-        if i in used_records:
-            i += 1
-            continue
-        r = records[i]
-        if r.rest_type == 0: # 睡眠
-            found_wake = False
-            for j in range(i + 1, min(i + 10, len(records))):
-                if records[j].rest_type == 1:
-                    dur = (records[j].rest_time - r.rest_time) / 3600.0
-                    if 0 < dur < 24:
-                        sessions.append({"sleep": r, "wake": records[j], "dur": dur})
-                        used_records.add(i)
-                        used_records.add(j)
-                        found_wake = True
-                        break
-            if not found_wake:
-                sessions.append({"sleep": r, "wake": None, "dur": None})
-        else: # 孤立起床
-            sessions.append({"sleep": None, "wake": r, "dur": None})
-        i += 1
+    sessions = [
+        {
+            "sleep": item.sleep,
+            "wake": item.wake,
+            "dur": item.duration_hours,
+            "sleep_date": item.sleep_date,
+        }
+        for item in pair_rest_events(records)
+        if item.sleep_date.year == year
+    ]
+    if not sessions:
+        raise HTTPException(status_code=404, detail=f"未找到 {year} 年的休息记录")
 
-    # 建立日期索引（以起床日期为准）
+    # 缺少入睡或起床端点的事件只属于数据质量问题，不能进入年度指标、连续天数或位置统计。
+    valid_sessions = [
+        session for session in sessions
+        if session["sleep"] is not None
+        and session["wake"] is not None
+        and session["dur"] is not None
+    ]
+
+    # 建立日期索引（以睡眠日，即起床当天为准）
     daily_sessions = {} # {date_str: session}
-    for s in sessions:
-        ref_record = s['wake'] or s['sleep']
-        d_str = to_cn_timezone(ref_record.rest_time).strftime('%Y-%m-%d')
+    for s in valid_sessions:
+        d_str = s['sleep_date'].isoformat()
         daily_sessions[d_str] = s
 
     # --- 数据质量分析 ---
@@ -354,8 +628,8 @@ async def get_annual_summary(
     longest_sleep = {"dur": 0, "date": "", "val": ""}
     shortest_sleep = {"dur": 100, "date": "", "val": ""}
 
-    for s in sessions:
-        m_str = to_cn_timezone((s['wake'] or s['sleep']).rest_time).strftime('%m月')
+    for s in valid_sessions:
+        m_str = s['sleep_date'].strftime('%m月')
         if m_str not in monthly: monthly[m_str] = {"total_dur": 0, "dur_count": 0, "record_count": 0}
         
         if s['sleep']:
@@ -381,11 +655,10 @@ async def get_annual_summary(
             durations.append(s['dur'])
             monthly[m_str]["total_dur"] += s['dur']
             monthly[m_str]["dur_count"] += 1
-            dt_w = to_cn_timezone(s['wake'].rest_time)
             if s['dur'] > longest_sleep["dur"]:
-                longest_sleep = {"dur": s['dur'], "date": dt_w.strftime('%m-%d'), "val": f"{s['dur']:.1f}h"}
+                longest_sleep = {"dur": s['dur'], "date": s['sleep_date'].strftime('%m-%d'), "val": f"{s['dur']:.1f}h"}
             if s['dur'] < shortest_sleep["dur"]:
-                shortest_sleep = {"dur": s['dur'], "date": dt_w.strftime('%m-%d'), "val": f"{s['dur']:.1f}h"}
+                shortest_sleep = {"dur": s['dur'], "date": s['sleep_date'].strftime('%m-%d'), "val": f"{s['dur']:.1f}h"}
 
     avg_s = sum(sleep_times)/len(sleep_times) if sleep_times else 0
     avg_w = sum(wake_times)/len(wake_times) if wake_times else 0
@@ -418,9 +691,15 @@ async def get_annual_summary(
     consistency_score = max(0, min(100, int(100 - (stdev_s / 3600) * 10))) 
 
     # --- 空间统计 ---
-    all_cities = [r.city for r in records if r.city]
+    relevant_records = [
+        record
+        for session in valid_sessions
+        for record in (session["sleep"], session["wake"])
+        if record is not None
+    ]
+    all_cities = [r.city for r in relevant_records if r.city]
     distinct_cities_count = len(set(all_cities))
-    wake_cities = [r.city for r in records if r.city and r.rest_type == 1]
+    wake_cities = [r.city for r in relevant_records if r.city and r.rest_type == 1]
     distinct_wake_cities_count = len(set(wake_cities))
 
     return {

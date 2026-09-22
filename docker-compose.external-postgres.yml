@@ -1,53 +1,80 @@
-# 面向已有外部 PostgreSQL 的部署文件；本文件不包含 db 服务。
-# 保持为本地/部署环境专用文件，不提交到 Git。
+# 外部 PostgreSQL 部署：本文件绝不创建 db 服务。
+# POSTGRES_HOST、POSTGRES_PORT、POSTGRES_USER、POSTGRES_PASSWORD、POSTGRES_DB 均来自 .env。
 services:
-  web:
+  migrate:
+    build: .
     image: lzyyauto/myservice:latest
-    container_name: Myservice
-    network_mode: bridge
+    env_file:
+      - .env
+    restart: "no"
+    init: true
+    command:
+      ["sh", "-ec", "python -m app.db.migration_baseline && alembic upgrade head"]
+
+  web:
+    build: .
+    image: lzyyauto/myservice:latest
     env_file:
       - .env
     ports:
       - "${MYSERVICE_PORT:-20035}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+        restart: true
     restart: unless-stopped
     init: true
-    command: >
-      sh -ec "python -c 'from app.db.init_db import init_db; init_db()' &&
-              exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/"]
-      interval: 30s
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/ >/dev/null"]
+      interval: 15s
       timeout: 5s
+      retries: 5
       start_period: 15s
-      retries: 3
 
-  notion-delivery:
-    image: lzyyauto/myservice:latest
-    container_name: Myservice-NotionDelivery
-    network_mode: bridge
-    env_file:
-      - .env
-    restart: unless-stopped
-    init: true
+  frontend:
+    build: ./frontend
+    image: lzyyauto/myservice-frontend:latest
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      BACKEND_UPSTREAM: web:8000
+      NGINX_ENVSUBST_FILTER: BACKEND_UPSTREAM
     depends_on:
       web:
         condition: service_healthy
-    command: >
-      sh -ec "exec python -m app.workers.notion_delivery"
+        restart: true
+    restart: unless-stopped
+    init: true
+
+  notion-delivery:
+    build: .
+    image: lzyyauto/myservice:latest
+    env_file:
+      - .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+        restart: true
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      disable: true
+    command: ["python", "-m", "app.workers.notion_delivery"]
 
   feishu-inspiration:
-    image: lzyyauto/myservice:latest
-    container_name: Myservice-FeishuInspiration
-    network_mode: bridge
     profiles:
       - inspiration
+    build: .
+    image: lzyyauto/myservice:latest
     env_file:
       - .env
     environment:
       INSPIRATION_DOC_PATH: /app/data/inspirations.md
     volumes:
-      - ${MYSERVICE_DATA_DIR:-/mnt/user/docker/myservices/data}:/app/data
+      - ${MYSERVICE_DATA_DIR:-./data}:/app/data
     restart: unless-stopped
     init: true
-    command: >
-      sh -ec "exec python -m app.workers.feishu_inspiration"
+    healthcheck:
+      disable: true
+    command: ["python", "-m", "app.workers.feishu_inspiration"]

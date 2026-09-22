@@ -20,3 +20,5 @@ AGENTS.md
 .claude/
 temp/
 data/
+frontend/node_modules/
+frontend/dist/

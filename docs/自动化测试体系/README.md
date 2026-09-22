@@ -5,7 +5,7 @@
 项目此前有少量 pytest 用例，但没有明确区分单元测试与功能测试，也没有统一的一键入口。
 现有开放功能包括：
 
-- 睡眠记录 HTTP API：认证、创建、自动切换睡眠/起床、列表、分页、年度汇总和明细；
+- 睡眠记录 HTTP API：认证、创建、12 小时重锚定的自动睡眠/起床判定、重复打卡保护、列表、分页、年度汇总和明细；
 - 飞书灵感采集：文本事件解析、去重、Markdown 落盘、token 获取和消息回执；
 - 睡眠记录的可选 Notion 同步与失败 Bark 提醒；
 - 已废弃接口必须持续保持不可调用。
@@ -28,7 +28,7 @@ Bark 或飞书。
 单元测试位于 `tests/unit/`，不要求 Docker 或网络：
 
 - Schema、时区转换和认证逻辑；
-- 睡眠记录创建、自动切换、分页和年度统计算法；
+- 睡眠记录创建、首条时间窗口判定、12 小时重锚定、自动切换、重复打卡保护、分页和年度统计算法；
 - Notion 数据格式转换、Bark 通知参数；
 - 灵感事件过滤、去重、落盘顺序；
 - 开放路由白名单和废弃路由保护；
@@ -79,8 +79,13 @@ KEEP_TEST_STACK=1 ./scripts/test.sh functional
 - 飞书本地跨组件功能测试：通过；
 - Python 编译、Shell 语法和 Compose 配置解析：通过。
 
-完整 HTTP + PostgreSQL 功能测试需要 Docker daemon。本次开发环境的 Docker daemon
-未运行，因此脚本和 Compose 配置已验证，但真实容器链路需在 Docker 启动后执行：
+完整 HTTP + PostgreSQL 功能测试需要 Docker daemon。当前 Docker 环境已执行过一次真实容器链路：
+
+- 功能测试：6 个通过；
+- 前端与后端镜像均可构建；
+- 功能测试中的空 PostgreSQL 先执行 `alembic upgrade head`，再启动 FastAPI。
+
+后续仍可用以下命令复验：
 
 ```bash
 ./scripts/test.sh functional
@@ -98,9 +103,9 @@ KEEP_TEST_STACK=1 ./scripts/test.sh functional
 
 ### Alembic 迁移边界
 
-仓库已由 `20260902_notion_ingest` 合并为一个 Alembic head，但功能测试空库仍暂时使用
-`init_db/create_all` 建表。因此它验证的是当前模型与运行链路，不代表生产迁移链路已经
-健康。
+仓库当前有一个 Alembic head；功能测试会在临时空库执行 `alembic upgrade head`。因此空库的
+迁移顺序、当前 HTTP 链路和 PostgreSQL 能一起验证，但它仍不代表有历史数据的生产数据库已经
+验证升级／回退。
 
 CI 中可设置以下变量要求迁移图保持单一 head：
 
@@ -108,8 +113,7 @@ CI 中可设置以下变量要求迁移图保持单一 head：
 STRICT_MIGRATIONS=1 ./scripts/test.sh unit
 ```
 
-后续仍需在备份并确认生产数据库当前 revision 后，验证 upgrade/rollback，再把功能测试
-切换为 `alembic upgrade head`。
+后续仍需在备份并确认生产数据库当前 revision 后，验证 upgrade/rollback 和关键数据保留。
 
 ### 建议的第二阶段
 

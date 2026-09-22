@@ -11,6 +11,7 @@
 - 记录睡眠和起床时间；
 - 保存 WiFi、经纬度和城市等可选位置数据；
 - 查询记录并生成年度总结、年度明细；
+- 提供独立 React 前端容器；睡眠页按起床当天展示会话、热力日历和分页明细，运动页使用 `/sport` 深链；
 - 可选同步 Notion，并在同步失败时通过 Bark 提醒。
 - 接收 Notion 标准页面 JSON；映射保存业务类型、显示名称和说明，已映射运动数据写入
   `sport_record`；运动种类通过全局 `notion_select_option_mappings` 的选项 ID 映射为可读
@@ -32,6 +33,7 @@ GTD、Telegram 下载、视频处理和相关 AI 能力已于 2026-07-19 废弃�
 - Pydantic 2.5.2
 - HTTP Bearer + 数据库 API Key
 - uv 依赖与虚拟环境管理
+- React 19 + TypeScript + Vite + Nginx
 
 ## 目录结构
 
@@ -60,6 +62,7 @@ app/
 app/workers/
 ├── feishu_inspiration.py # 飞书长连接独立进程入口
 └── notion_delivery.py    # Notion 持久化投递队列独立进程入口
+frontend/                 # 睡眠与运动看板，独立构建并由 Nginx 提供
 alembic/                  # 历史迁移，不得因功能废弃而改写
 tests/                    # 自动化测试
 ├── unit/                 # 无 Docker、无外部服务的单元测试
@@ -89,14 +92,22 @@ uv run python -m app.workers.notion_delivery
 uv run python -m compileall -q app alembic scripts tests
 uv run alembic heads
 
-# Docker
-docker compose up --build -d
-docker compose --profile inspiration up --build -d
+# 前端
+cd frontend
+npm ci
+npm run test
+npm run build
+
+# Docker（默认 Compose 自带 PostgreSQL；外部数据库使用专用 Compose）
+docker compose up --build -d --wait
+docker compose --profile inspiration up --build -d --wait
+docker compose -f docker-compose.external-postgres.yml up --build -d --wait
 ```
 
 数据库命令：
 
 ```bash
+uv run python -m app.db.migration_baseline
 uv run alembic upgrade head
 uv run alembic revision --autogenerate -m "描述"
 uv run alembic history
@@ -125,6 +136,9 @@ FastAPI 仅开放：
 - `GET /api/v1/rest-records/`
 - `GET /api/v1/rest-records/annual-summary/{year}`
 - `GET /api/v1/rest-records/annual-summary/{year}/table`
+- `GET /api/v1/rest-records/sessions`
+- `DELETE /api/v1/rest-records/sessions/{anchor_record_id}`
+- `GET /api/v1/sport-records/`
 - `POST /api/v1/notion-ingest/`
 - `PUT /api/v1/notion-ingest/mappings/{database_id}`
 - `GET /api/v1/notion-ingest/mappings`
@@ -148,8 +162,9 @@ FastAPI 仅开放：
   HTTP/PostgreSQL 链路，`all` 依次执行两者。
 - 当前活跃模块单元测试覆盖率门槛为 75%；废弃兼容函数不计入门槛。
 - 功能测试结束后必须清理容器和数据；仅调试时允许使用 `KEEP_TEST_STACK=1`。
-- 当前迁移图已有一个 head，但功能测试仍暂用空库 `create_all`。不得把这项测试误称为
-  生产迁移验证；完整决策见 `docs/自动化测试体系/README.md`。
+- 功能测试会在一次性空 PostgreSQL 上先执行 `python -m app.db.migration_baseline`，再执行
+  `alembic upgrade head` 和真实 HTTP 链路验证；
+  这不等于已验证有历史数据的生产库升级／回退。生产升级前仍须备份并检查 `alembic current`。
 
 长期开发入口：
 
@@ -159,6 +174,20 @@ FastAPI 仅开放：
 
 飞书灵感采集通过长连接接收事件，不注册 HTTP 路由。它必须作为独立进程运行，
 不得加入 FastAPI lifespan，以免 Uvicorn 重载或多进程造成重复连接。
+
+睡眠会话不是新的数据库表：它由休息事件投影得到。完整会话固定按起床当天归属；单侧
+错误事件按现存事件当天展示且不参与统计。删除会话会删除本地配对事件，但不会删除 Notion 副本。
+
+快捷指令可省略 `rest_type` 保持一键打卡：显式类型始终优先；未指定时使用上一条
+`rest_time`，间隔严格大于 12 小时则按北京时间 21:00（含）至次日 05:00（不含）重锚定为
+睡眠，其他时段重锚定为起床；其余间隔按上一条类型切换。未指定类型且距上一条不足 2 分钟
+必须返回 `409`，不得写入数据库或触发 Notion 同步。完整规则见 `docs/睡眠打卡自动纠偏/README.md`。
+
+运动 `duration` 的业务单位为分钟。“其他”且时长为 2 分钟的是红色个人运动标记，时长为
+30 分钟的是黄色特殊标记；API 必须以独立布尔字段返回两者，日历和明细均不得只依赖颜色。
+早期文档曾误写为小时；既有数据只能在备份并核对原始载荷后另行修正，不得自动批量换算。
+`sport_record.detail` 与 `detail2` 仅用于保留 `sport_data` 历史附加文本；不得在当前
+API、看板或 Notion 映射业务中使用或展示。
 
 ## 废弃功能规则
 
@@ -196,7 +225,7 @@ GTD、Telegram 下载、视频和旧 AI 配置字段仅在 `Settings` 中兼容�
 
 ## 已知问题
 
-1. Notion 统一采集迁移合并了历史两个 head。生产升级前先检查 `alembic current`、完成
+1. Notion 统一采集迁移已合并为一个 head。生产升级前先检查 `alembic current`、完成
    数据库备份；不得直接重置有数据的数据库。
 2. PostgreSQL `zrest` 存在 collation 版本提示，处理前必须备份并评估索引重建。
 3. 部分 Pydantic Schema 仍使用 v1 兼容写法，会产生弃用警告。

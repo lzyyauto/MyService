@@ -22,6 +22,9 @@ def test_only_active_http_routes_are_registered(monkeypatch) -> None:
         "/api/v1/rest-records/",
         "/api/v1/rest-records/annual-summary/{year}",
         "/api/v1/rest-records/annual-summary/{year}/table",
+        "/api/v1/rest-records/sessions",
+        "/api/v1/rest-records/sessions/{anchor_record_id}",
+        "/api/v1/sport-records/",
         "/docs",
         "/redoc",
     }
@@ -39,6 +42,9 @@ def test_only_active_http_routes_are_registered(monkeypatch) -> None:
         "/api/v1/rest-records/",
         "/api/v1/rest-records/annual-summary/{year}",
         "/api/v1/rest-records/annual-summary/{year}/table",
+        "/api/v1/rest-records/sessions",
+        "/api/v1/rest-records/sessions/{anchor_record_id}",
+        "/api/v1/sport-records/",
     }
 
 

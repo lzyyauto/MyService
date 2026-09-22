@@ -25,6 +25,9 @@ def test_root_and_openapi_expose_only_active_http_features(
         "/api/v1/rest-records/",
         "/api/v1/rest-records/annual-summary/{year}",
         "/api/v1/rest-records/annual-summary/{year}/table",
+        "/api/v1/rest-records/sessions",
+        "/api/v1/rest-records/sessions/{anchor_record_id}",
+        "/api/v1/sport-records/",
     }
 
 
@@ -77,6 +80,26 @@ def test_sleep_record_full_http_flow(
     )
     assert sleep.status_code == 201, sleep.text
 
+    year = datetime.now().year
+    china_tz = timezone(timedelta(hours=8))
+    connection = psycopg2.connect(
+        host="127.0.0.1",
+        port=int(__import__("os").environ.get("FUNCTIONAL_TEST_DB_PORT", "15432")),
+        user="functional",
+        password="functional",
+        dbname="functional",
+    )
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE rest_records SET rest_time = %s WHERE id = %s",
+                (
+                    int((datetime.now(tz=china_tz) - timedelta(hours=8)).timestamp()),
+                    sleep.json()["id"],
+                ),
+            )
+    connection.close()
+
     wake = requests.post(
         f"{base_url}/api/v1/rest-records/",
         headers=auth_headers,
@@ -86,8 +109,6 @@ def test_sleep_record_full_http_flow(
     assert wake.status_code == 201, wake.text
     assert wake.json()["rest_type"] == 1
 
-    year = datetime.now().year
-    china_tz = timezone(timedelta(hours=8))
     sleep_at = int(datetime(year, 1, 2, 23, 0, tzinfo=china_tz).timestamp())
     wake_at = int(datetime(year, 1, 3, 7, 0, tzinfo=china_tz).timestamp())
     connection = psycopg2.connect(
@@ -135,6 +156,15 @@ def test_sleep_record_full_http_flow(
     assert summary.status_code == 200, summary.text
     assert summary.json()["overview"]["avg_duration_hrs"] == 8.0
 
+    dashboard = requests.get(
+        f"{base_url}/api/v1/rest-records/sessions?scope=year&period={year}",
+        headers=auth_headers,
+        timeout=5,
+    )
+    assert dashboard.status_code == 200, dashboard.text
+    assert dashboard.json()["summary"]["average_duration_hours"] == 8.0
+    assert dashboard.json()["records"][0]["sleep_date"] == f"{year}-01-03"
+
 
 def test_notion_ingest_maps_exercise_and_keeps_unmapped_events(
     base_url: str,
@@ -148,7 +178,7 @@ def test_notion_ingest_maps_exercise_and_keeps_unmapped_events(
         json={
             "business_type": "exercise",
             "display_name": "日常运动记录",
-            "description": "来自 iOS 快捷指令；时长单位为小时。",
+            "description": "来自 iOS 快捷指令；时长单位为分钟。",
         },
         timeout=5,
     )
@@ -240,6 +270,16 @@ def test_notion_ingest_maps_exercise_and_keeps_unmapped_events(
     )
     assert unmapped.status_code == 202, unmapped.text
     assert unmapped.json()["business_type"] is None
+
+    sport_dashboard = requests.get(
+        f"{base_url}/api/v1/sport-records/?scope=year&period=2026",
+        headers=auth_headers,
+        timeout=5,
+    )
+    assert sport_dashboard.status_code == 200, sport_dashboard.text
+    assert sport_dashboard.json()["summary"]["total_duration_minutes"] == 1
+    assert sport_dashboard.json()["records"][0]["duration_minutes"] == 1
+    assert sport_dashboard.json()["records"][0]["is_marker"] is False
 
     connection = psycopg2.connect(
         host="127.0.0.1",

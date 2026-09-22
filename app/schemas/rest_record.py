@@ -140,6 +140,7 @@ class AnnualSummaryTableRecord(BaseModel):
     duration: Optional[float] = None
     city: Optional[str] = None
     wifi: Optional[str] = None
+    error_code: Optional[Literal["missing_sleep", "missing_wake", "invalid_duration"]] = None
 
 
 class AnnualSummaryTableResponse(BaseModel):

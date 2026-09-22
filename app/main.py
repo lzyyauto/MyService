@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import notion_ingest, public_request_dump, rest_records
+from app.api.v1.endpoints import notion_ingest, public_request_dump, rest_records, sport_records
 from app.core.config import settings
 from app.db.init_db import init_db
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -62,6 +62,10 @@ def create_app() -> FastAPI:
             "description": "标准 Notion 页面载荷的本地留存、业务映射与异步投递",
         },
         {
+            "name": "运动记录",
+            "description": "运动记录查询与统计",
+        },
+        {
             "name": "调试",
             "description": "仅在显式开启配置时暴露的公开请求接收器",
         },
@@ -86,6 +90,11 @@ def create_app() -> FastAPI:
         notion_ingest.router,
         prefix="/api/v1/notion-ingest",
         tags=["Notion 采集"],
+    )
+    app.include_router(
+        sport_records.router,
+        prefix="/api/v1/sport-records",
+        tags=["运动记录"],
     )
     if settings.ENABLE_PUBLIC_REQUEST_DUMP:
         app.include_router(

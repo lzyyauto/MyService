@@ -3,8 +3,8 @@
 用于记录个人数据的 Python 服务。睡眠/起床数据以本地 PostgreSQL 为准；Notion 是异步、
 尽力而为的副本。现有 iOS 快捷指令可通过统一 Notion 采集接口提交标准页面载荷。
 
-项目当前只有后端。FastAPI 和飞书 worker 是两个独立运行单元：前者负责睡眠数据，
-后者负责把飞书文本灵感保存为 Markdown；任一侧故障不应阻塞另一侧。
+项目包含 FastAPI、独立前端容器和后台 worker。睡眠看板默认展示当前月，运动页通过
+`/sport` 独立访问；飞书 worker 负责把文本灵感保存为 Markdown，各运行单元互不阻塞。
 
 ## 📚 文档导航
 
@@ -13,11 +13,15 @@
 - [测试规范](docs/项目开发指南/测试规范.md)
 - [自动化测试体系实施记录](docs/自动化测试体系/README.md)
 - [Notion 统一采集与运动映射](docs/Notion统一采集与运动映射/README.md)
+- [睡眠与运动数据看板](docs/睡眠运动数据看板/README.md)
+- [睡眠打卡自动纠偏](docs/睡眠打卡自动纠偏/README.md)
+- [本地运行与 Docker 部署](docs/容器化部署与本地运行/README.md)
 
 ## 🌟 主要功能
 
 ### 📊 睡眠记录
 - 睡眠/起床时间记录
+- 按起床当天归属的睡眠会话、月历热力图和分页明细；历史统计与分页完整保留，热力图限制为最近三年
 - 地理位置和WiFi信息追踪
 - 数据自动同步到Notion数据库
 
@@ -39,6 +43,7 @@
 | 领域 | 技术 |
 |------|------|
 | 后端框架 | FastAPI 0.104.1 |
+| 前端 | React + TypeScript + Vite + Nginx |
 | 数据库 | PostgreSQL + SQLAlchemy 2.0 |
 | 认证授权 | HTTP Bearer + 数据库 API Key |
 | 数据验证 | Pydantic 2.5.2 |
@@ -54,41 +59,54 @@
 - Python 3.11
 - uv 0.5.24+
 - PostgreSQL 14+
-- Docker (可选)
+- Node.js 22+ 与 npm（仅本地运行或构建前端时需要）
+- Docker（可选；用于一次性功能测试和最终部署）
 
-### 安装启动
+### 本地直接运行（推荐开发与日常调试）
 
-**方式一：Docker Compose**
-```bash
-docker compose up --build -d
-```
-
-**方式二：本地开发**
 ```bash
 # 按 uv.lock 安装依赖；首次执行会自动创建项目根目录的 .venv
 uv sync --locked
 
-# 配置环境变量
+# 配置环境变量；PostgreSQL 可以是本机服务或已有的远程开发库，不要求 Docker
 cp .env.example .env
+# 编辑 .env，填入实际的 POSTGRES_HOST、POSTGRES_USER、POSTGRES_PASSWORD、POSTGRES_DB
 
-# 启动服务
+# 首次使用空的本地开发库时，先补齐历史迁移依赖的基础表，再执行迁移
+uv run python -m app.db.migration_baseline
+uv run alembic upgrade head
+
+# 终端一：启动 API
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 另开终端启动飞书灵感采集（配置凭证后）
+# 终端二：启动前端开发服务器；它会把 /api 代理到本机的 8000 端口
+cd frontend
+npm ci
+npm run dev
+```
+
+本地访问地址：
+
+- 睡眠看板：<http://localhost:3000/>
+- 运动看板：<http://localhost:3000/sport>
+- API 文档：<http://localhost:8000/docs>
+
+如需在本地运行独立 worker，另开终端执行：
+
+```bash
+# 只有配置了对应凭证后才需要启动
+uv run python -m app.workers.notion_delivery
 uv run python -m app.workers.feishu_inspiration
 ```
 
-### 常用检查
+### 直接测试与构建（不依赖 Docker）
 
 ```bash
-# 默认：离线单元测试、编译检查和覆盖率门槛
+# 后端：离线单元测试、编译检查和覆盖率门槛
 ./scripts/test.sh unit
 
-# 一次性 PostgreSQL + 真实 HTTP 功能测试（需要 Docker）
-./scripts/test.sh functional
-
-# 依次执行全部验证
-./scripts/test.sh all
+# 前端：单元测试和生产构建（命令从项目根目录执行）
+(cd frontend && npm ci && npm run test && npm run build)
 
 # 底层命令仍可直接使用
 uv run pytest -q
@@ -96,8 +114,31 @@ uv run python -m compileall -q app alembic
 uv run alembic heads
 ```
 
-功能测试不会读取正式数据库，也不会访问真实飞书、Notion 或 Bark。完整测试边界、
-覆盖范围与已知限制见
+### Docker 功能测试与最终部署
+
+Docker 不是本地开发的前提；它用于隔离的一次性 PostgreSQL/真实 HTTP 功能测试，以及最终
+以容器部署 API、worker 与前端。
+
+```bash
+# 一次性测试库和真实 HTTP 链路；不会读取正式数据库或访问真实飞书、Notion、Bark
+./scripts/test.sh functional
+
+# 依次执行本地单元测试与 Docker 功能测试
+./scripts/test.sh all
+
+# Docker 自带 PostgreSQL：迁移成功后启动前端、API 与 Notion 投递 worker
+docker compose up --build -d --wait
+
+# 需要飞书灵感采集时，显式启用可选 profile
+docker compose --profile inspiration up --build -d --wait
+
+# 使用已有外部 PostgreSQL：不会创建 db 容器
+docker compose -f docker-compose.external-postgres.yml up --build -d --wait
+```
+
+容器部署后的默认访问地址为 `http://<服务器地址>:3000/` 和
+`http://<服务器地址>:3000/sport`。两份 Compose 的数据库边界、迁移、验证和停止命令见
+[`docs/容器化部署与本地运行/README.md`](docs/容器化部署与本地运行/README.md)。完整测试边界、覆盖范围与已知限制见
 [`docs/自动化测试体系/README.md`](docs/自动化测试体系/README.md)。
 
 `.venv/` 由 uv 管理并被 Git 忽略。如需进入虚拟环境，可执行
@@ -116,6 +157,8 @@ uv lock
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 - OpenAPI JSON: http://localhost:8000/api/v1/openapi.json
+- 睡眠看板: http://localhost:3000/
+- 运动看板: http://localhost:3000/sport
 
 ## 📝 API端点概览
 
@@ -124,6 +167,15 @@ uv lock
 - `GET /api/v1/rest-records/` - 获取作息记录列表
 - `GET /api/v1/rest-records/annual-summary/{year}` - 获取年度睡眠总结
 - `GET /api/v1/rest-records/annual-summary/{year}/table` - 获取年度睡眠明细
+- `GET /api/v1/rest-records/sessions` - 获取月度、年度或全部睡眠会话看板
+- `DELETE /api/v1/rest-records/sessions/{anchor_record_id}` - 删除一个本地睡眠会话
+
+### 运动记录
+
+- `GET /api/v1/sport-records/` - 获取月度、年度或全部运动看板
+
+运动 `duration` 的业务单位为分钟。“其他”且时长为 2 分钟的记录会显示为红色个人标记，时长为 30 分钟的记录会显示为黄色特殊标记。
+早期文档曾误写为小时，既有数据必须对照原始载荷后另行修正，系统不会自动换算。
 
 ### Notion 统一采集
 
@@ -183,6 +235,8 @@ Authorization: Bearer <token>
 
 API Key 来自数据库 `users.api_key`。项目当前没有公开的用户注册或 Key 签发接口，
 首次使用前需通过受控的初始化或运维流程准备用户，不能直接使用示例或测试 Key。
+看板登录框可输入原始 `api_key`、`Bearer <api_key>`，或完整的
+`Authorization: Bearer <api_key>`；页面会先验证凭证，失败时留在登录页显示原因。
 
 创建记录示例：
 
@@ -193,8 +247,10 @@ curl -X POST http://localhost:8000/api/v1/rest-records/ \
   -d '{"city":"上海","wifi_name":"Home"}'
 ```
 
-省略 `rest_type` 时，第一条记录默认为睡眠，后续按当前用户上一条记录在睡眠和起床
-之间自动切换。也可以显式传入 `0`（睡眠）或 `1`（起床）。
+可以显式传入 `0`（睡眠）或 `1`（起床）。省略 `rest_type` 时，服务按北京时间自动
+判定：与上一条 `rest_time` 间隔严格大于 12 小时后，21:00（含）至次日 05:00（不含）
+判为睡眠，其余时段判为起床；不超过 12 小时时按上一条类型切换。未指定类型且距上一条
+不足 2 分钟会返回 `409`，以防止重复点击。完整规则见[睡眠打卡自动纠偏](docs/睡眠打卡自动纠偏/README.md)。
 
 ## 📁 项目结构
 
@@ -208,6 +264,7 @@ app/
 ├── services/            # 业务服务与外部集成（含灵感采集）
 ├── workers/             # 独立后台进程入口
 └── utils/               # 通用工具
+frontend/                # React 看板与独立 Nginx 容器
 alembic/                 # 数据库迁移
 scripts/                 # 人工运维脚本
 tests/                   # 自动化测试

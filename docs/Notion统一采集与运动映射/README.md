@@ -46,7 +46,7 @@ Notion properties：
 - `运动类型`: 读取 `select.id`，在 `notion_select_option_mappings` 查找对应 `name` 后写入
   本地 `sport_record.sport_type`。快捷指令中的 `select.name` 和 `select.color` 均不参与
   本地业务投影；未知 ID 返回 `422` 且不创建任何记录；
-- `时长`: 非负 `number`；
+- `时长`: 以分钟为单位的非负 `number`；早期文档曾误写为小时，既有数据需核对原始载荷后另行修正，不自动换算；
 - `记录时间`: 带时区的 `date.start`；
 - `日期`: `YYYY-MM-DD` 的 `date.start`；
 - `月份`: 非空 `title`；
@@ -78,7 +78,7 @@ curl -X PUT "http://localhost:8000/api/v1/notion-ingest/mappings/<database-id>" 
   -d '{
     "business_type":"exercise",
     "display_name":"日常运动记录",
-    "description":"来自 iOS 快捷指令；时长单位为小时。"
+    "description":"来自 iOS 快捷指令；时长单位为分钟。"
   }'
 ```
 

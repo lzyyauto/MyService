@@ -43,7 +43,7 @@ FastAPI 和飞书 worker 共用代码仓库、配置体系和 Docker 镜像，�
 
 - 记录睡眠或起床时间；
 - 可选记录 WiFi、经纬度和城市；
-- 未指定记录类型时，根据当前用户上一条记录自动在睡眠和起床之间切换；
+- 未指定记录类型时，使用北京时间、上一条 `rest_time` 和 12 小时重锚定窗口自动判定；不足 2 分钟的自动重复打卡返回 `409`；
 - 按当前用户查询记录并分页；
 - 生成年度统计和年度明细；
 - 使用数据库中的 API Key 进行 Bearer 认证；
@@ -110,8 +110,8 @@ GTD、Telegram 下载、视频处理和旧 AI 客户端已废弃：
 
 1. Alembic 已由 `20260902_notion_ingest` 合并为一个 head，但生产数据库尚未在备份副本
    上验证 upgrade/rollback；不得重置或改写历史迁移。
-2. 功能测试暂用空库 `create_all` 建表，只验证当前模型和运行链路，不代表生产迁移
-   链路健康。
+2. 功能测试会在空库执行 `alembic upgrade head`，但尚未在包含历史数据的生产备份副本
+   上验证 upgrade/rollback；不得把空库成功等同于生产迁移链路健康。
 3. 部分 Pydantic Schema 仍使用 v1 兼容写法，会产生弃用警告。
 4. `rest_records.py` 同时包含 HTTP 编排、Notion 调度和年度统计，职责偏重，后续新增
    统计能力前应先拆出独立服务。
@@ -134,8 +134,7 @@ GTD、Telegram 下载、视频处理和旧 AI 客户端已废弃：
 1. 备份真实数据库，并只读确认 `alembic current`、现有表和合并 revision 的实际关系；
 2. 记录生产数据库来源和可回退点；
 3. 在生产数据副本上验证合并 revision 的 upgrade 和 rollback 策略；
-4. 将功能测试建表方式从 `create_all` 切换为 `alembic upgrade head`；
-5. 默认启用 `STRICT_MIGRATIONS=1`。
+4. 默认启用 `STRICT_MIGRATIONS=1`，并在 CI 中保留空库迁移验证。
 
 完成标准：空库迁移和受支持旧 revision 升级均由自动化测试验证。
 

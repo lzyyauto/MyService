@@ -170,6 +170,8 @@ def _repair_legacy_notion_event_tables() -> None:
             "occurred_on": "DATE",
             "month_str": "VARCHAR",
             "city": "VARCHAR",
+            "detail": "TEXT",
+            "detail2": "TEXT",
             "created_at": "BIGINT",
             "updated_at": "BIGINT",
         },

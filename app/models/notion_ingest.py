@@ -96,6 +96,9 @@ class SportRecord(Base):
     occurred_on = Column(Date, nullable=False, index=True)
     month_str = Column(String, nullable=False)
     city = Column(String, nullable=True)
+    # 仅留存历史 sport_data 的附加文本；不属于当前 API / 看板对外契约。
+    detail = Column(Text, nullable=True)
+    detail2 = Column(Text, nullable=True)
     created_at = Column(BigInteger, default=_now_timestamp, nullable=False)
     updated_at = Column(
         BigInteger,

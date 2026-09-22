@@ -272,7 +272,7 @@ async def test_mapping_upsert_creates_and_updates_mapping() -> None:
     body = NotionDatabaseMappingUpsert(
         business_type="exercise",
         display_name="日常运动记录",
-        description="iOS 快捷指令提交；时长单位为小时。",
+        description="iOS 快捷指令提交；时长单位为分钟。",
     )
 
     created = await notion_ingest.upsert_mapping(
@@ -284,7 +284,7 @@ async def test_mapping_upsert_creates_and_updates_mapping() -> None:
     assert created.notion_database_id == "exercise-db"
     assert created.business_type == "exercise"
     assert created.display_name == "日常运动记录"
-    assert created.description == "iOS 快捷指令提交；时长单位为小时。"
+    assert created.description == "iOS 快捷指令提交；时长单位为分钟。"
     assert new_db.committed
 
     mapping = SimpleNamespace(
