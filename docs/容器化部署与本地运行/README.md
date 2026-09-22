@@ -88,6 +88,7 @@ docker compose ps
 
 `web` 和 `frontend` 具有 HTTP 健康检查；Notion 投递与飞书灵感是长连接／轮询 worker，并不监听
 HTTP 端口，因此以进程退出后的自动重启监测其可用性，不套用 Web 健康检查。
+前端健康检查会通过 Nginx 请求后端的 `/api/v1/openapi.json`，验证 `/api/` 路径转发确实可用。
 
 需要飞书灵感采集时显式启用 profile：
 
