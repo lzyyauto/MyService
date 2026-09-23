@@ -110,12 +110,17 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .heat-cell:hover, .heat-cell:focus-visible { filter: saturate(1.12); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--primary) 36%, transparent); }
 .heat-cell.has-issue { border-color: var(--danger); }
 .heat-cell span { font-size: 0.72rem; font-weight: 800; }
-.heat-awards { position: absolute; top: 8px; left: 8px; display: flex; align-items: center; gap: 2px; color: var(--primary); }
-.heat-awards svg { filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--surface) 80%, transparent)); }
-.heat-cell .heat-marker { position: absolute; bottom: 8px; width: 8px; height: 8px; border: 2px solid var(--surface); border-radius: 999px; }
-.heat-cell .heat-marker-red { left: 8px; background: var(--danger); box-shadow: 0 0 0 1px rgba(130, 20, 20, 0.18); }
-.heat-cell .heat-marker-yellow { display: grid; left: 8px; width: 27px; height: 19px; place-items: center; border: 2px solid var(--marker-yellow-border); border-radius: 6px; background: var(--marker-yellow); color: var(--marker-yellow-text); font-size: 0.62rem; font-style: normal; font-weight: 900; letter-spacing: 0.01em; line-height: 1; box-shadow: 0 1px 0 color-mix(in srgb, var(--marker-yellow-border) 40%, transparent); }
-.heat-cell.has-red-marker .heat-marker-yellow { left: 21px; }
+.heat-awards { position: absolute; top: 7px; left: 7px; display: flex; align-items: center; gap: 4px; }
+.heat-award { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border: 2px solid #b38b21; border-radius: 7px; background: var(--surface); color: #5b440b; box-shadow: 0 1px 1px rgba(14, 23, 38, 0.22); }
+.heat-award svg { flex: 0 0 auto; }
+.heat-marker-group { position: absolute; z-index: 1; left: 8px; display: inline-flex; align-items: center; gap: 2px; }
+.heat-marker-red { bottom: 5px; }
+.heat-marker-yellow { top: 5px; }
+.heat-cell .heat-marker-box { display: grid; min-width: 19px; height: 19px; place-items: center; border: 2px solid var(--surface); border-radius: 6px; padding: 0 2px; color: #fff; font-size: 0.59rem; font-weight: 900; line-height: 1; box-shadow: 0 1px 0 rgba(14, 23, 38, 0.3); }
+.heat-marker-red .heat-marker-box { background: var(--danger); }
+.heat-marker-yellow .heat-marker-box { border-color: var(--marker-yellow-border); background: var(--marker-yellow); color: var(--marker-yellow-text); }
+.heat-cell .heat-marker-count { border-radius: 3px; padding: 1px 2px; background: var(--surface); color: var(--danger); font-size: 0.68rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+.heat-marker-yellow .heat-marker-count { color: var(--marker-yellow-border); }
 .heat-cell b { position: absolute; left: 8px; bottom: 8px; display: grid; width: 18px; height: 18px; place-items: center; border: 2px solid var(--surface); border-radius: 999px; background: var(--danger); color: white; font-size: 0.7rem; line-height: 1; box-shadow: 0 0 0 1px rgba(130, 20, 20, 0.18); }
 .heat-0 { background: var(--heat-0); }
 .heat-1 { background: var(--heat-1); }
@@ -126,11 +131,13 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .heat-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(14px, 1fr)); gap: 5px; }
 .heat-strip .heat-cell { min-height: 18px; padding: 0; border-radius: 4px; }
 .heat-strip .heat-awards { top: -5px; left: -5px; gap: 0; }
-.heat-strip .heat-awards svg { width: 11px; height: 11px; }
-.heat-strip .heat-cell .heat-marker { bottom: -4px; width: 7px; height: 7px; border-width: 1px; }
+.heat-strip .heat-award { width: 11px; height: 11px; border-width: 1px; border-radius: 3px; }
+.heat-strip .heat-award svg { width: 9px; height: 9px; }
+.heat-strip .heat-marker-group { bottom: -4px; }
 .heat-strip .heat-cell .heat-marker-red { left: -3px; }
-.heat-strip .heat-cell .heat-marker-yellow { left: -3px; width: 8px; height: 8px; border: 1px solid var(--marker-yellow-border); border-radius: 999px; color: transparent; font-size: 0; }
-.heat-strip .heat-cell.has-red-marker .heat-marker-yellow { left: 5px; }
+.heat-strip .heat-cell .heat-marker-yellow { top: auto; left: 5px; }
+.heat-strip .heat-cell .heat-marker-box { min-width: 8px; width: 8px; height: 8px; border-width: 1px; padding: 0; border-radius: 999px; color: transparent; font-size: 0; }
+.heat-strip .heat-marker-count { display: none; }
 .heat-strip .heat-cell b { left: auto; right: -5px; bottom: -5px; width: 13px; height: 13px; border-width: 1px; font-size: 0.55rem; }
 .empty-inline { grid-column: 1 / -1; margin: 18px 0; color: var(--muted); text-align: center; }
 
@@ -211,13 +218,17 @@ td strong { color: var(--text); }
   .heat-panel { padding: 17px 12px; }
   .panel-heading { align-items: flex-start; flex-direction: column; }
   .calendar { gap: 5px; }
-  .calendar-spacer, .heat-cell { min-height: 42px; }
+  .calendar-spacer, .calendar .heat-cell { min-height: 56px; }
+  .sport-theme .calendar-spacer, .sport-theme .calendar .heat-cell { min-height: 60px; }
   .heat-cell { padding: 6px; border-radius: 7px; }
-  .heat-awards { top: 5px; left: 5px; }
-  .heat-cell .heat-marker { bottom: 5px; }
-  .heat-cell .heat-marker-red { left: 5px; }
-  .heat-cell .heat-marker-yellow { left: 5px; width: 25px; height: 18px; font-size: 0.59rem; }
-  .heat-cell.has-red-marker .heat-marker-yellow { left: 17px; }
+  .calendar .heat-awards { top: 5px; left: 5px; flex-direction: column; gap: 1px; transform: scale(0.7); transform-origin: top left; }
+  .heat-award { width: 21px; height: 21px; }
+  .heat-award svg { width: 13px; height: 13px; }
+  .heat-marker-group { left: 5px; }
+  .heat-marker-red { bottom: 3px; }
+  .heat-marker-yellow { top: 18px; }
+  .heat-cell .heat-marker-box { min-width: 17px; height: 17px; font-size: 0.55rem; }
+  .heat-cell .heat-marker-count { font-size: 0.6rem; }
   .heat-cell b { left: 5px; bottom: 5px; }
   .table-wrap { overflow: visible; padding: 0 12px; }
   table, thead, tbody, tr, th, td { display: block; }
@@ -233,6 +244,13 @@ td strong { color: var(--text); }
   .empty-table { grid-column: 1 / -1; padding: 24px; }
   .empty-table::before { display: none; }
   .pagination { justify-content: space-between; padding: 10px 12px; }
+}
+
+@media (max-width: 360px) {
+  .sport-theme .calendar-spacer, .sport-theme .calendar .heat-cell { min-height: 80px; }
+  .sport-theme .calendar .heat-marker-group { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .sport-theme .calendar .heat-marker-yellow { top: 17px; }
+  .sport-theme .calendar .heat-marker-red { top: 47px; bottom: auto; }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -268,6 +286,8 @@ td strong { color: var(--text); }
   .auth-shell { background: radial-gradient(circle at 50% 20%, #172b48, transparent 38%), var(--bg); }
   .sport-theme { --heat-1: #1f4038; --heat-2: #27574a; --heat-3: #337663; --heat-4: #43967d; --heat-5: #76bca7; }
   .sport-theme .metric-icon { background: #213f38; }
+  .heat-award { border-color: #e5bc55; color: #ffe398; }
+  .heat-marker-yellow .heat-marker-count { color: var(--marker-yellow); }
 }
 
 @media (prefers-reduced-motion: reduce) {

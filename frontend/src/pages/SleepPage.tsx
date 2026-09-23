@@ -198,7 +198,7 @@ export function SleepPage({ token, onDisconnect }: SleepPageProps) {
               </div>
             </div>
             <CalendarHeatmap scope={scope} period={period} data={heatData} variant="sleep" />
-            <p className="panel-note">颜色越深表示时长越长；皇冠为睡得最久、月亮为最早入睡、闹钟为最早起床；红色感叹号表示当天存在错误数据，未纳入统计。聚焦日期可查看精确数值。颜色不代表医学评价。</p>
+            <p className="panel-note">颜色越深表示时长越长；金边皇冠、月亮、闹钟分别表示最长睡眠、最早入睡、最早起床；红色感叹号表示当天存在错误数据，未纳入统计。聚焦日期可查看精确数值。颜色不代表医学评价。</p>
             {scope === "all" && <p className="history-limit-note">统计指标和下方分页明细覆盖全部历史；为保持页面流畅，热力图只显示最近三年。</p>}
           </section>
 

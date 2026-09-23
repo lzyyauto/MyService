@@ -8,7 +8,9 @@ export interface HeatDatum {
   value: number | null;
   detail: string;
   marker?: boolean;
+  markerCount?: number;
   yellowMarker?: boolean;
+  yellowMarkerCount?: number;
   issue?: boolean;
   awards?: SleepAward[];
 }
@@ -57,8 +59,21 @@ function AwardIcons({ awards }: { awards: SleepAward[] | undefined }) {
     <span className="heat-awards" aria-hidden="true">
       {awards.map((award) => {
         const Icon = award === "longest" ? Crown : award === "earliest-sleep" ? MoonStar : AlarmClock;
-        return <Icon key={award} size={13} strokeWidth={2.4} />;
+        return (
+          <span className={`heat-award heat-award-${award}`} key={award} title={awardLabel(award)}>
+            <Icon size={15} strokeWidth={2.5} />
+          </span>
+        );
       })}
+    </span>
+  );
+}
+
+function SportMarker({ type, count }: { type: "red" | "yellow"; count: number }) {
+  return (
+    <span className={`heat-marker-group heat-marker-${type}`} aria-hidden="true">
+      <span className="heat-marker-box">{type === "red" ? "2" : "30"}</span>
+      {count > 1 && <span className="heat-marker-count">×{count}</span>}
     </span>
   );
 }
@@ -80,8 +95,8 @@ export function CalendarHeatmap({ scope, period, data, variant }: CalendarHeatma
               title={`${item.date} · ${item.detail}`}
             >
               <AwardIcons awards={item.awards} />
-              {item.marker && <i className="heat-marker heat-marker-red" aria-hidden="true" />}
-              {item.yellowMarker && <i className="heat-marker heat-marker-yellow" aria-hidden="true">30</i>}
+              {item.marker && <SportMarker type="red" count={item.markerCount ?? 1} />}
+              {item.yellowMarker && <SportMarker type="yellow" count={item.yellowMarkerCount ?? 1} />}
               {item.issue && <b aria-hidden="true">!</b>}
             </span>
           ))
@@ -120,8 +135,8 @@ export function CalendarHeatmap({ scope, period, data, variant }: CalendarHeatma
           >
             <span>{day}</span>
             <AwardIcons awards={item?.awards} />
-            {item?.marker && <i className="heat-marker heat-marker-red" aria-hidden="true" />}
-            {item?.yellowMarker && <i className="heat-marker heat-marker-yellow" aria-hidden="true">30</i>}
+            {item?.marker && <SportMarker type="red" count={item.markerCount ?? 1} />}
+            {item?.yellowMarker && <SportMarker type="yellow" count={item.yellowMarkerCount ?? 1} />}
             {item?.issue && <b aria-hidden="true">!</b>}
           </div>
         );

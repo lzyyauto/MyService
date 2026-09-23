@@ -42,7 +42,9 @@ export function SportPage({ token, onDisconnect }: { token: string; onDisconnect
       value: item.total_duration_minutes,
       detail: `${formatMinutes(item.total_duration_minutes)}，${item.record_count} 条记录${item.marker_count ? `，${item.marker_count} 个 2 分钟标记` : ""}${item.thirty_minute_marker_count ? `，${item.thirty_minute_marker_count} 个 30 分钟标记` : ""}`,
       marker: item.marker_count > 0,
+      markerCount: item.marker_count,
       yellowMarker: item.thirty_minute_marker_count > 0,
+      yellowMarkerCount: item.thirty_minute_marker_count,
     })) ?? [],
     [data],
   );
@@ -90,6 +92,7 @@ export function SportPage({ token, onDisconnect }: { token: string; onDisconnect
               <div className="legend"><span>少</span>{[1, 2, 3, 4, 5].map((level) => <i className={`heat-${level}`} key={level} />)}<span>多</span><i className="marker-legend marker-legend-red" /><span>2 分钟</span><i className="marker-legend marker-legend-yellow" /><span>30 分钟</span></div>
             </div>
             <CalendarHeatmap scope={scope} period={period} data={heatData} variant="sport" />
+            <p className="panel-note">同一天出现多条特殊记录时，色块旁会显示数量，例如红色 <strong>2</strong> 旁的 <strong>×3</strong> 表示 3 条 2 分钟标记，黄色 <strong>30</strong> 旁的 <strong>×2</strong> 表示 2 条 30 分钟标记。</p>
             {scope === "all" && <p className="history-limit-note">统计指标和下方分页明细覆盖全部历史；为保持页面流畅，热力图只显示最近三年。</p>}
           </section>
 
