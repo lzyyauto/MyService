@@ -84,3 +84,24 @@ def test_state_errors_never_print_sql_or_private_body(config_path,cli_store,caps
     output=capsys.readouterr().out
     assert json.loads(output)['error_code'] == 'collection_state_error'
     assert 'private' not in output and 'password' not in output
+
+
+def test_missing_schema_gives_migration_hint(config_path,cli_store,capsys):
+    from app.services.feishu.store import StateSchemaError
+    cli_store.streams.side_effect = StateSchemaError('private details')
+    assert feishu_cli.main(['--config', str(config_path), 'status']) == 1
+    output = capsys.readouterr().out
+    result = json.loads(output)
+    assert result['error_code'] == 'state_schema_missing'
+    assert 'alembic upgrade head' in result['hint']
+    assert 'private' not in output
+
+
+def test_init_local_rejects_pg_before_connecting(config_path,monkeypatch,capsys):
+    constructor = MagicMock()
+    monkeypatch.setattr(feishu_cli, 'Store', constructor)
+    monkeypatch.setattr(feishu_cli, 'load_dotenv', lambda *args, **kwargs: None)
+    monkeypatch.setattr(feishu_cli, 'database_url', lambda snapshot: 'postgresql://invalid.test/db')
+    assert feishu_cli.main(['--config', str(config_path), 'init-local']) == 1
+    constructor.assert_not_called()
+    capsys.readouterr()

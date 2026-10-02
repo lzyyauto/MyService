@@ -1,6 +1,6 @@
 # 飞书采集职责简化
 
-更新：2026-10-02。状态：已实现纯采集，未重新部署 Docker。
+更新：2026-10-03。已实现纯采集；状态库默认复用项目 PG，详见[最新状态库说明](../飞书状态库复用PostgreSQL/README.md)。
 
 ## 1. 需求与决定
 
@@ -32,7 +32,7 @@ OK 表示已经收录，不是 AI 回复，也不代表程序修改了飞书平�
 | apps | 多个机器人连接、凭证引用、默认文档目标 |
 | routes | 将群／私聊会话映射到文档目标；可选 sender_open_id／@ 过滤 |
 | pipelines | 为兼容已使用的名称保留；仅表示 id、input_path、enabled 的文档收集目标 |
-| runtime | 文件根目录、内部 SQLite 路径、采集轮询与有限重试 |
+| runtime | 文件根目录、状态库模式／SQLite 兼容路径、采集轮询与有限重试 |
 | observability | 来源发现、日志级别、保留时间和容量 |
 
 多个来源可以共享一个目标；也可按 app_id／chat_id／pipeline_id 模板分开。
@@ -46,10 +46,10 @@ OK 表示已经收录，不是 AI 回复，也不代表程序修改了飞书平�
 ## 4. 实施与数据保留
 
 - 保留采集独立进程、多应用连接、来源 ID 查询、限时发现、去重、文件锁及半条写入恢复。
-- 内部状态使用持久化本地 SQLite，默认 data/feishu/state.sqlite3；启动自动创建采集所需四张表。
-- FEISHU_STATE_DATABASE_URL 可继续引用既有 SQLite，保留来源与去重记录；不再读取 POSTGRES_*。
+- 内部状态默认复用项目 PostgreSQL，由 Alembic 创建表；显式 SQLite 供兼容与隔离演示。
+- FEISHU_STATE_DATABASE_URL 仅作可选覆盖；留空读取 POSTGRES_*。旧 SQLite 状态可受控导入 PG。
 - 删除 AI 客户端、每日整理进程、任务领取／快照／生成／结果投递代码及 CLI worker／process／retry。
-- Docker 移除 inspiration-ai 与 inspiration-processing，采集服务不再等待业务数据库迁移。
+- Docker 移除 inspiration-ai 与 inspiration-processing；默认 PG 模式下，采集服务等待 migrate。
 - 原文、已生成结果、SQLite 中历史整理任务和 PostgreSQL 相关旧迁移／模型均保留，不执行删表或 downgrade。
 - 旧模型 FeishuRun 仅为历史结构兼容，采集不创建、查询或消费其数据。
 - 本次移除前的私有配置、提示词和代码保存在 data/backups/feishu-collection-only-*；该目录不纳入 Git。
@@ -59,7 +59,7 @@ OK 表示已经收录，不是 AI 回复，也不代表程序修改了飞书平�
 在 Markdown 中通常不显示，不应手动修改。其他工具读写／归档该文件时需协调文件锁，
 不要在采集正在追加时直接覆盖整份文件。
 
-SQLite 与 Markdown 均需持久化和备份，状态库应放在本机磁盘，不要放到不支持锁的网络文件系统。
+PostgreSQL 与 Markdown 均需备份；显式 SQLite 模式应放在本机磁盘，不要放到不支持锁的网络文件系统。
 失败状态只用于落盘／基本回执重试，不是用户任务或 AI 工作流。
 
 ## 5. 验证与交付
@@ -85,12 +85,6 @@ Docker daemon 不运行时不自动启动它，不把 Compose 静态校验当成
 
 ## 6. Docker 配置复核（2026-10-03）
 
-用户已确认开发环境真实飞书消息完整写入。两份部署 Compose 的采集角色均只挂载只读 config
-与可写 data，禁用 HTTP 健康探针和 Docker stdout 日志，使用独立进程、init 和 unless-stopped；
-没有业务数据库依赖，也没有宿主机端口或特权挂载。生产依赖、构建上下文的私有数据排除和
-main 推送触发的 amd64／arm64 镜像发布路径已核对。
-
-本机 Docker daemon 未运行，本轮仅静态校验，不代表已完成真实容器启动验证。
-开发机状态库覆盖是绝对 /Users/... 路径，Docker 端必须清空覆盖或改为 /app/data 下的 SQLite。
-升级与跨机器迁移时保持原数据目录，先停采集并备份；内部状态保存了旧绝对路径，积压任务不能直接迁移。
-完整挂载表、更新命令和验收见操作手册第 7 节。
+采集保持独立进程，config 只读，data 可写，禁用 HTTP 探针和 Docker stdout 日志。
+当前默认项目 PG，两个方案等待 migrate 成功；内置数据库地址 db:5432，外部数据库读取项目 .env。
+详情见[最新 PG 与 Docker 操作手册](../飞书状态库复用PostgreSQL/操作手册.md)。

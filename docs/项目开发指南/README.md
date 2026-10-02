@@ -63,11 +63,12 @@ FastAPI 和飞书 worker 共用代码仓库、配置体系和 Docker 镜像，�
 - 多个应用的独立 WebSocket 连接、TOML 文档分流、来源 ID 查询与限时发现；
 - 原始日期／内容及来源保存到可配置 Markdown，消息 ID 与重试状态持久化；
 - 保存成功再添加 OK 回执，保存和回执阶段分别恢复；
-- 内部 SQLite 启动自动初始化，本地和 Docker 均不依赖业务 PostgreSQL；
+- 默认复用项目 PostgreSQL，表由 Alembic 创建，Docker 等待 migrate；SQLite 仅显式兼容与隔离演示；
 - 删除文档后不重放旧消息，新消息重新创建；
 - 仅做采集，总结、澄清与 agent 编排后续独立设计；
 - 旧单文件入口在 FEISHU_CONFIG_PATH 留空时保留兼容。
 
+PG 配置与旧状态导入见[状态库操作手册](../飞书状态库复用PostgreSQL/操作手册.md)。
 入口、来源查询和扩展见[飞书采集职责简化](../飞书采集职责简化/README.md)及[操作手册](../飞书采集职责简化/操作手册.md)。
 
 ### 2.3 Notion 统一采集与运动映射

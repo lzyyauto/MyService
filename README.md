@@ -36,7 +36,7 @@
 ### 💡 灵感采集
 - 通过飞书 WebSocket 长连接接收文本消息
 - 多机器人／群聊按 TOML 分流，追加完整时间与来源到自定义 Markdown，并给已保存消息添加回执
-- 来源 ID 查询、限时发现日志、持久化 SQLite 去重；删除文档后由新消息重新创建
+- 来源 ID 查询、限时发现日志、默认复用项目 PostgreSQL 持久化去重；删除文档后由新消息重新创建
 - 总结与 agent 编排后续独立设计，采集器只做消息保存和 OK 回执
 - 与 FastAPI 分进程运行，采集故障不影响睡眠 API
 
@@ -213,7 +213,7 @@ uv lock
 
 ```bash
 uv run python scripts/feishu_local_demo.py
-# 复制并填写 config/feishu.toml；SQLite 状态库启动自动初始化
+# 复制并填写 config/feishu.toml；先备份项目 PG 并完成 alembic upgrade head
 uv run python -m app.feishu_cli validate
 uv run python -m app.feishu_cli collect
 # 另一个终端查看来源 ID 和采集状态
@@ -222,7 +222,8 @@ uv run python -m app.feishu_cli status
 ```
 
 配置模板位于 config/feishu.example.toml；设置 FEISHU_CONFIG_PATH=config/feishu.toml。
-Docker 只启用 inspiration profile，采集不依赖 PostgreSQL。它独立于 FastAPI，
+PG 配置、建表和 SQLite 状态导入见[状态库操作手册](docs/飞书状态库复用PostgreSQL/操作手册.md)。
+Docker 只启用 inspiration profile，默认复用项目 PG 并等待 migrate 成功。它独立于 FastAPI，
 不提供灵感 HTTP 路由。以下为旧单文件兼容模式：
 
 ```env

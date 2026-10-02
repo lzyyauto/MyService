@@ -14,13 +14,15 @@ from collections import deque
 from pathlib import Path
 
 from dotenv import load_dotenv
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError
 
 from app.services.feishu.collection import CollectionService
 from app.services.feishu.config import ConfigManager
 from app.services.feishu.events import Message
 from app.services.feishu.observability import configure_logs
-from app.services.feishu.store import Store, database_url
+from app.services.feishu.files import file_lock
+from app.services.feishu.store import StateSchemaError, Store, database_url
 from app.services.feishu.transport import FeishuError
 
 
@@ -30,6 +32,8 @@ def parser() -> argparse.ArgumentParser:
     sub = root.add_subparsers(dest="command", required=True)
     sub.add_parser("validate", help="仅校验采集配置，不访问状态库或网络")
     sub.add_parser("init-local", help="兼容入口；采集 SQLite 已在启动时自动初始化")
+    transfer = sub.add_parser("import-sqlite", help="停采集后导入旧 SQLite 状态到 PostgreSQL，不覆盖既有记录")
+    transfer.add_argument("--source", required=True)
     sub.add_parser("collect", help="启动应用长连接、文档写入与基本回执")
     sources = sub.add_parser("sources", help="查询实际观察到的来源 ID")
     sources.add_argument("--app")
@@ -87,10 +91,17 @@ def main(argv: list[str] | None = None) -> int:
             run_gateway(str(configs.path))
             return 0
         configure_logs(snapshot.path(snapshot.config.observability.log_dir) / "cli", snapshot.config.observability)
-        store = Store(database_url(snapshot))
+        url = database_url(snapshot)
+        if args.command == "init-local" and make_url(url).get_backend_name() != "sqlite":
+            raise ValueError("init-local 仅适用于显式 SQLite；PostgreSQL 请使用项目 Alembic 迁移")
+        store = Store(url)
         try:
             if args.command == "init-local":
                 emit({"initialized": True, "mode": "local_sqlite", "automatic": True})
+            elif args.command == "import-sqlite":
+                from app.services.feishu.state_transfer import import_sqlite
+                with file_lock(snapshot.path(snapshot.config.observability.log_dir) / "collector" / "role", blocking=False):
+                    emit(import_sqlite(Path(args.source), store))
             elif args.command == "sources":
                 if not 1 <= args.limit <= 1000 or args.offset < 0:
                     raise ValueError("分页 limit 必须在 1 至 1000 之间，offset 不得为负")
@@ -119,11 +130,14 @@ def main(argv: list[str] | None = None) -> int:
         # 不输出 DB URL、SQL 参数、HTTP 正文或原始凭证。
         details = []
         error_code = error.code if isinstance(error, FeishuError) else None
-        hint = "请检查采集配置、内部 SQLite 文件权限和 collector 日志"
+        hint = "请检查采集配置、PostgreSQL 连接／迁移或 SQLite 文件权限，以及 collector 日志"
         if error_code == "feishu_credentials_missing":
             hint = "app_id_env／app_secret_env 填环境变量名，实际凭证放配置根目录 .env 或进程环境"
         if isinstance(error, DBAPIError):
             error_code = "collection_state_error"
+        if isinstance(error, StateSchemaError):
+            error_code = "state_schema_missing"
+            hint = "采集表缺失或结构落后；请先备份项目数据库，再执行 python -m app.db.migration_baseline 与 alembic upgrade head"
         cause = error.__cause__
         if args.command == "validate" and cause and hasattr(cause, "errors"):
             details = [{"field": ".".join(map(str, item["loc"])), "type": item["type"]} for item in cause.errors()]

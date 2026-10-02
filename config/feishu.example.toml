@@ -3,8 +3,9 @@ version = 1
 
 [runtime]
 root_dir = ".." # 相对 TOML 所在目录；其余相对路径基于此根目录
-state_path = "data/feishu/state.sqlite3" # 内部来源／去重／写入状态，自动初始化
-database_url_env = "FEISHU_STATE_DATABASE_URL" # 可选 SQLite URL 覆盖；不读取 POSTGRES_*
+state_backend = "postgresql" # 默认复用项目 POSTGRES_*
+state_path = "data/feishu/state.sqlite3" # 仅 state_backend="sqlite" 时使用，供隔离演示
+database_url_env = "FEISHU_STATE_DATABASE_URL" # 可选独立连接串覆盖；留空复用项目 PG
 poll_seconds = 1
 retry_seconds = 30
 max_attempts = 3

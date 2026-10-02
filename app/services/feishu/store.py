@@ -1,4 +1,4 @@
-"""采集内部 SQLite 状态：来源、去重、落盘恢复和回执，不依赖业务数据库。"""
+"""采集状态默认复用项目 PostgreSQL；显式 SQLite 用于隔离演示和兼容。"""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import create_engine, or_, text
-from sqlalchemy.engine import make_url
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import create_engine, or_, select, text
+from sqlalchemy.engine import URL, make_url
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from app.models.feishu import FEISHU_TABLES, FeishuControl, FeishuMessage, FeishuSource, FeishuStream
@@ -25,31 +25,70 @@ def key_for(*values: str) -> str:
     return hashlib.sha256("\0".join(values).encode()).hexdigest()
 
 
-def database_url(snapshot: ConfigSnapshot) -> str:
+class StateSchemaError(ValueError):
+    """采集表缺失或结构落后，需要由 Alembic 迁移。"""
+
+
+def database_url(snapshot: ConfigSnapshot) -> str | URL:
     configured = os.environ.get(snapshot.config.runtime.database_url_env)
     if configured:
-        if make_url(configured).get_backend_name() != "sqlite":
-            raise ValueError("采集内部状态仅使用本地 SQLite，请移除 PostgreSQL 状态库覆盖")
+        if make_url(configured).get_backend_name() not in {"sqlite", "postgresql"}:
+            raise ValueError("状态库只支持 PostgreSQL 或显式 SQLite")
         return configured
-    return f"sqlite:///{snapshot.path(snapshot.config.runtime.state_path)}"
+    if snapshot.config.runtime.state_backend == "sqlite":
+        return f"sqlite:///{snapshot.path(snapshot.config.runtime.state_path)}"
+    return URL.create(
+        "postgresql+psycopg2",
+        username=os.environ.get("POSTGRES_USER", "postgres"),
+        password=os.environ.get("POSTGRES_PASSWORD", "postgres"),
+        host=os.environ.get("POSTGRES_HOST", "localhost"),
+        port=int(os.environ.get("POSTGRES_PORT", "5432")),
+        database=os.environ.get("POSTGRES_DB", "rest_data"),
+    )
 
 
 class Store:
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str | URL) -> None:
         parsed = make_url(url)
-        if parsed.get_backend_name() != "sqlite" or not parsed.database or parsed.database == ":memory:":
-            raise ValueError("采集状态库必须是持久化的本地 SQLite 文件")
-        state_path = Path(parsed.database).expanduser().resolve()
-        state_path.parent.mkdir(parents=True, exist_ok=True)
-        self.engine = create_engine(parsed.set(database=str(state_path)), connect_args={"timeout": 10, "check_same_thread": False})
+        backend = parsed.get_backend_name()
+        if backend == "sqlite":
+            if not parsed.database or parsed.database == ":memory:":
+                raise ValueError("SQLite 状态库必须使用持久化文件")
+            state_path = Path(parsed.database).expanduser().resolve()
+            state_path.parent.mkdir(parents=True, exist_ok=True)
+            self.engine = create_engine(parsed.set(database=str(state_path)), connect_args={"timeout": 10, "check_same_thread": False})
+        elif backend == "postgresql":
+            self.engine = create_engine(parsed, pool_pre_ping=True, pool_size=2, max_overflow=2,
+                                        connect_args={"connect_timeout": 10})
+        else:
+            raise ValueError("状态库只支持 PostgreSQL 或 SQLite")
         self.sessions = sessionmaker(bind=self.engine, expire_on_commit=False)
-        self.initialize_local()
+        try:
+            if backend == "sqlite":
+                self.initialize_local()
+            else:
+                self.verify_schema()
+        except Exception:
+            self.engine.dispose()
+            raise
+
+    def verify_schema(self) -> None:
+        """只校验采集列；生产库不执行 create_all 或其他 DDL。"""
+        try:
+            with self.engine.connect() as connection:
+                for table in FEISHU_TABLES:
+                    connection.execute(select(table).limit(0))
+        except DBAPIError as error:
+            if getattr(error.orig, "pgcode", None) in {"42P01", "42703"}:
+                raise StateSchemaError("采集表结构缺失，请先备份并执行项目 Alembic 迁移") from error
+            raise
 
     @contextmanager
     def transaction(self):
         with self.sessions() as db:
             try:
-                db.execute(text("BEGIN IMMEDIATE"))
+                if self.engine.dialect.name == "sqlite":
+                    db.execute(text("BEGIN IMMEDIATE"))
                 yield db
                 db.commit()
             except Exception:

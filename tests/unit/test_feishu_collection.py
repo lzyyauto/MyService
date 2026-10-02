@@ -148,15 +148,31 @@ def test_transaction_commits_or_rolls_back(store, fake_db):
     assert fake_db.execute.call_count == 2
 
 
-def test_database_defaults_to_local_sqlite_without_postgres(monkeypatch, config_path):
+def test_database_defaults_to_project_pg_and_supports_explicit_override(monkeypatch, config_path):
     snapshot = ConfigManager(config_path).current
     monkeypatch.delenv("FEISHU_STATE_DATABASE_URL", raising=False)
-    monkeypatch.setenv("POSTGRES_DB", "must_not_be_used")
-    assert database_url(snapshot) == f"sqlite:///{config_path.parent}/data/feishu/state.sqlite3"
+    values = {"POSTGRES_USER": "pg_user", "POSTGRES_PASSWORD": "p@ss:/%word",
+              "POSTGRES_DB": "project_db", "POSTGRES_HOST": "db", "POSTGRES_PORT": "5433"}
+    for key, value in values.items():
+        monkeypatch.setenv(key, value)
+    url = database_url(snapshot)
+    assert url.get_backend_name() == "postgresql"
+    assert (url.username, url.password, url.database, url.host, url.port) == ("pg_user", "p@ss:/%word", "project_db", "db", 5433)
+    assert "p@ss" not in str(url)
+    monkeypatch.setenv("FEISHU_STATE_DATABASE_URL", "postgresql://invalid.test/private")
+    assert database_url(snapshot) == "postgresql://invalid.test/private"
     monkeypatch.setenv("FEISHU_STATE_DATABASE_URL", "sqlite:///existing.sqlite3")
     assert database_url(snapshot) == "sqlite:///existing.sqlite3"
-    monkeypatch.setenv("FEISHU_STATE_DATABASE_URL", "postgresql://invalid.test/private")
+    monkeypatch.setenv("FEISHU_STATE_DATABASE_URL", "mysql://invalid.test/private")
     with pytest.raises(ValueError): database_url(snapshot)
+    monkeypatch.delenv("FEISHU_STATE_DATABASE_URL")
+
+
+def test_explicit_sqlite_backend_remains_isolated(monkeypatch, config_path):
+    monkeypatch.delenv("FEISHU_STATE_DATABASE_URL", raising=False)
+    config_path.write_text(config_path.read_text().replace('root_dir = "."', 'root_dir = "."\nstate_backend = "sqlite"'))
+    snapshot = ConfigManager(config_path).current
+    assert database_url(snapshot) == f"sqlite:///{config_path.parent}/data/feishu/state.sqlite3"
 
 
 def test_store_auto_initializes_only_collection_tables_without_real_database(monkeypatch, tmp_path):
@@ -170,7 +186,7 @@ def test_store_auto_initializes_only_collection_tables_without_real_database(mon
     table.create.assert_called_once_with(engine, checkfirst=True)
     engine.connect.assert_not_called()
     instance.close()
-    for invalid in ['postgresql://invalid.test/db','sqlite:///:memory:']:
+    for invalid in ['mysql://invalid.test/db','sqlite:///:memory:']:
         with pytest.raises(ValueError): Store(invalid)
 
 
@@ -199,3 +215,37 @@ def test_receipt_failure_does_not_rewrite_document(config_path, store, fake_db, 
     transport.reaction.side_effect = None
     service.flush("personal")
     assert message.reaction_status == "sent" and Path(stream.input_path).read_text() == first
+
+
+def test_postgres_store_checks_schema_without_creating_tables(monkeypatch):
+    engine = MagicMock()
+    engine.dialect.name = "postgresql"
+    create = MagicMock(return_value=engine)
+    monkeypatch.setattr("app.services.feishu.store.create_engine", create)
+    table = MagicMock()
+    monkeypatch.setattr("app.services.feishu.store.FEISHU_TABLES", [table])
+    monkeypatch.setattr("app.services.feishu.store.select", lambda table: MagicMock())
+    sessions = MagicMock()
+    monkeypatch.setattr("app.services.feishu.store.sessionmaker", lambda **kwargs: sessions)
+    instance = Store("postgresql://invalid.test/db")
+    table.create.assert_not_called()
+    assert create.call_args.kwargs["pool_pre_ping"] is True
+    assert create.call_args.kwargs["pool_size"] == 2
+    engine.connect.return_value.__enter__.return_value.execute.assert_called_once()
+    with instance.transaction() as session:
+        session.execute.assert_not_called()
+    session.commit.assert_called_once()
+
+
+def test_missing_postgres_schema_is_safe_and_closes_engine(monkeypatch):
+    from sqlalchemy.exc import ProgrammingError
+    from app.services.feishu.store import StateSchemaError
+    engine = MagicMock()
+    engine.dialect.name = "postgresql"
+    error = ProgrammingError("private SQL", {"secret": "private"}, SimpleNamespace(pgcode="42P01"))
+    engine.connect.return_value.__enter__.return_value.execute.side_effect = error
+    monkeypatch.setattr("app.services.feishu.store.create_engine", lambda *args, **kwargs: engine)
+    with pytest.raises(StateSchemaError) as result:
+        Store("postgresql://invalid.test/db")
+    assert "private" not in str(result.value)
+    engine.dispose.assert_called_once()

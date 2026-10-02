@@ -9,7 +9,7 @@ import threading
 import time
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -26,6 +26,7 @@ class StrictModel(BaseModel):
 class Runtime(StrictModel):
     root_dir: str = ".."
     database_url_env: str = "FEISHU_STATE_DATABASE_URL"
+    state_backend: Literal["postgresql", "sqlite"] = "postgresql"
     state_path: str = "data/feishu/state.sqlite3"
     poll_seconds: float = Field(default=1, gt=0, le=60)
     retry_seconds: int = Field(default=30, gt=0)

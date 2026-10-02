@@ -72,6 +72,10 @@ services:
       - ${MYSERVICE_CONFIG_DIR:-./config}:/app/config:ro
     logging:
       driver: none
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+        restart: true
     restart: unless-stopped
     init: true
     healthcheck:

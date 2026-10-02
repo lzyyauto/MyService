@@ -94,6 +94,8 @@ services:
     env_file:
       - .env
     environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
       INSPIRATION_DOC_PATH: /app/data/inspirations.md
       FEISHU_CONFIG_PATH: ${FEISHU_CONFIG_PATH:-}
     volumes:
@@ -101,6 +103,10 @@ services:
       - ${MYSERVICE_CONFIG_DIR:-./config}:/app/config:ro
     logging:
       driver: none
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+        restart: true
     restart: unless-stopped
     init: true
     healthcheck:

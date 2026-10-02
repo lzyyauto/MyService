@@ -216,7 +216,7 @@ def _repair_legacy_notion_event_tables() -> None:
 def init_db() -> None:
     # 创建缺失表；再对早期 create_all 留下的旧 Notion 表做窄范围兼容升级。
     _rename_legacy_exercise_records_table()
-    # 飞书采集使用独立本地 SQLite，业务库只保留历史迁移兼容，不由 FastAPI 初始化飞书表。
+    # 飞书采集默认复用项目 PostgreSQL，其表只由 Alembic 管理，不由 FastAPI create_all 初始化。
     Base.metadata.create_all(bind=engine, tables=[table for table in Base.metadata.sorted_tables if not table.name.startswith("feishu_")])
     _repair_legacy_notion_mapping_table()
     _repair_legacy_notion_event_tables()

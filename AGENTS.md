@@ -83,7 +83,7 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 运行飞书灵感采集 worker
 uv run python -m app.workers.feishu_inspiration
-# 新版：复制 config/feishu.example.toml 为 config/feishu.toml；本地 SQLite 状态自动初始化
+# 新版：复制 config/feishu.example.toml 为 config/feishu.toml；默认复用项目 PG；表由 Alembic 管理
 uv run python -m app.feishu_cli validate
 uv run python -m app.feishu_cli collect
 # 无 Docker、无真实凭证的隔离闭环演示
@@ -165,8 +165,8 @@ FastAPI 仅开放：
 ## 测试规则
 
 - 单元测试位于 `tests/unit/`，不得访问网络、真实数据库或用户数据。
-- 飞书采集跨组件演示和专用功能测试使用临时 SQLite、本机 HTTP 替身，不创建生产业务表；
-  不属于单元测试，也不代表 PostgreSQL 生产验证。
+- 飞书兼容模式跨组件演示／专用 SQLite 功能测试使用临时 SQLite 和本机 HTTP 替身；
+  PG 采集功能测试只使用统一的一次性 PG 栈，不向项目真实数据库写入合成测试数据。
 - 其他功能测试位于 `tests/functional/`，只能使用 `docker-compose.functional.yml`
   创建的一次性 PostgreSQL 和本地外部服务替身。
 - 默认测试不得连接真实飞书、Notion 或 Bark。
@@ -232,7 +232,7 @@ API、看板或 Notion 映射业务中使用或展示。
 - Bark：`BARK_BASE_URL`、`BARK_DEFAULT_DEVICE_KEY`
 - 飞书灵感：`FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_BASE_URL`、
   `INSPIRATION_DOC_PATH`
-- 新版飞书：`FEISHU_CONFIG_PATH`、`FEISHU_STATE_DATABASE_URL`（可选 SQLite 覆盖）；
+- 新版飞书：`FEISHU_CONFIG_PATH`、`FEISHU_STATE_DATABASE_URL`（可选 PG／SQLite 覆盖）；
   `config/feishu.toml` 与 `.env` 不纳入 Git，示例与提示词在 `config/`。
 - 日志与 Docker 持久化配置；飞书配置目录通过 `MYSERVICE_CONFIG_DIR` 挂载。
 
@@ -240,18 +240,23 @@ GTD、Telegram 下载、视频和旧 AI 配置字段仅在 `Settings` 中兼容�
 主应用不得读取。
 
 旧单文件灵感默认为 `data/inspirations.md`；新版 Markdown 路径在 TOML 自定义。
-`data/` 不纳入 Git，部署时必须持久化和备份。采集内部 SQLite 默认 `data/feishu/state.sqlite3`，
-启动自动初始化采集表，不依赖业务 PostgreSQL、不读取 POSTGRES_*。历史飞书 Alembic 迁移和
-FeishuRun 模型只为兼容保留，不修改历史、不删表；FastAPI create_all 仍排除飞书表。
+`data/` 不纳入 Git，部署时必须持久化和备份。飞书状态库默认读取项目 POSTGRES_*；
+TOML runtime.database_url_env 指定的环境变量非空时覆盖连接。显式 state_backend="sqlite" 才使用
+state_path，供隔离演示；SQLite 兼容入口自动初始化四张采集表。PG 仅检查列，缺表报 state_schema_missing，
+表由既有 Alembic revision 20261002_feishu 管理，不自动 create_all、不手工建表、不改写迁移。
+FeishuRun 只保留历史结构兼容，当前采集不使用。FastAPI create_all 仍排除飞书表。
+PG 使用小连接池、pre_ping 和正常事务；BEGIN IMMEDIATE 只用于 SQLite。
 TOML 热加载，失败保留有效版本；runtime、日志目录、.env、Python 代码变化需重启采集。
 默认接收群聊／私聊文本、不要求 @；落盘成功才加 OK 回执，回执失败重试不重新写入。
 删除 Markdown 不重放旧数据，新消息会重新创建。默认日志七天／每文件 10 MB／每角色 100 MB，
 Docker 采集使用 none 驱动，查询正式文件日志；来源 ID 用 CLI sources，限时发现用 discover。
 操作步骤、来源查询、扩展热加载和容器升级清单见 `docs/飞书采集职责简化/操作手册.md`，决定见该目录 README。
-Docker 只挂载 config→/app/config（只读）与 data→/app/data（可写），SQLite 和日志在 data 内；
-不能沿用开发机 /Users/... 状态库 URL。跨机器迁移须先清空待写入／回执积压、停采集并备份原文与状态库；
-数据库记录旧绝对目标路径，不自动重定位积压任务。同一机器人只能保留一个有效采集实例。
-`worker / process / retry` 和 AI 配置段已移除；`init-local` 仅保留兼容入口，启动本已自动初始化。
+Docker 挂载 config→/app/config（只读）与 data→/app/data（原文、日志，可写）；采集等待 migrate，
+内置 PG 使用 db:5432，外部方案沿用项目 .env。默认不需要 SQLite 挂载或单独 URL。
+旧状态用 import-sqlite 受控导入 PG，要求停采集、无积压或失败、源库只读、单事务、按主键跳过不覆盖。
+跨机器部署仍须清空积压；数据库保留原绝对路径，不自动重定位积压。一个机器人只保留一个采集实例。
+PG 建表、本地运行、迁移和 Docker 更新见 `docs/飞书状态库复用PostgreSQL/操作手册.md`。
+`worker / process / retry` 和 AI 配置段已移除；`init-local` 仅允许显式 SQLite，不能用于 PG 建表。
 CLI 状态库错误只输出 `collection_state_error` 等安全分类，不得输出 SQL、连接串、参数或原文。
 Settings 的 COLLECTION_AI_API_KEY 仅兼容旧 .env，隐藏值，不调用任何 AI 服务。
 

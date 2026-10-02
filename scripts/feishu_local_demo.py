@@ -55,6 +55,7 @@ def exercise(root:Path,endpoint:str,alias:str='demo') -> dict:
     path.write_text(f'''
 [runtime]
 root_dir = "."
+state_backend = "sqlite"
 database_url_env = "FEISHU_DEMO_STATE_OVERRIDE"
 retry_seconds = 1
 [[apps]]
@@ -89,7 +90,8 @@ input_path = "messages.md"
         assert (root/'messages.md').read_text() == first
         assert store.counts()['pending_receipts'] == 0
         assert store.sources()[0]['sender_open_id'] == 'ou_demo'
-        assert 'feishu_runs' not in inspect(store.engine).get_table_names()
+        if store.engine.dialect.name == 'sqlite':
+            assert 'feishu_runs' not in inspect(store.engine).get_table_names()
         (root/'messages.md').unlink()
         assert not resumed.receive(event)
         assert resumed.flush(alias) == 0 and not (root/'messages.md').exists()

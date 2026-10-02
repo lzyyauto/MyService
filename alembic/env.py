@@ -3,6 +3,12 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+from app.db.migration_baseline import _database_url
+
+# 与采集 CLI 一样，开发环境读取项目 .env；容器已有环境变量始终优先。
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -10,18 +16,7 @@ config = context.config
 
 def get_database_url():
     """Get database URL from environment variables or alembic config"""
-    # Try environment variable first
-    if os.getenv('DATABASE_URL'):
-        return os.getenv('DATABASE_URL')
-
-    # Otherwise construct from individual env vars (matching the app config)
-    postgres_user = os.getenv('POSTGRES_USER', 'postgres')
-    postgres_password = os.getenv('POSTGRES_PASSWORD', 'postgres')
-    postgres_host = os.getenv('POSTGRES_HOST', 'localhost')
-    postgres_port = os.getenv('POSTGRES_PORT', '5432')
-    postgres_db = os.getenv('POSTGRES_DB', 'rest_data')
-
-    return f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+    return _database_url()
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

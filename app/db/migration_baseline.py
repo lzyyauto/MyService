@@ -9,6 +9,9 @@ migration。因此历史 revision 会引用 ``users.id``，但仓库内没有创
 from __future__ import annotations
 
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
@@ -42,4 +45,5 @@ def ensure_legacy_users_table() -> None:
 
 
 if __name__ == "__main__":
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
     ensure_legacy_users_table()
