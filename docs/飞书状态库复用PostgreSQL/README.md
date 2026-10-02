@@ -41,7 +41,7 @@ import-sqlite 明确读取只读 SQLite，仅向已迁移 PG 导入四张采集�
 - 私有 .env 已清空 SQLite 覆盖，私有 TOML 显式 state_backend="postgresql"，应用、路由和路径保留。
 - 旧 SQLite、原文及配置保留；完整 PG 备份与旧配置位于被忽略的 data/backups/feishu-project-pg-*。
 - 准备备份时安装了独立的 libpq 命令行工具；它是本机操作工具，不增加项目或容器依赖。
-- Docker daemon 未运行，完整一次性 PG／HTTP 功能测试未执行；真实 PG 迁移与状态导入属于本轮受控操作，不能代替隔离功能测试。
+- 初次切换时 Docker 尚未运行；用户启动 Docker 后，测试子代理已完成 8 项一次性 PG／HTTP 功能测试，测试资源已清理。
 
 运行和 Docker 更新步骤见[操作手册](操作手册.md)。
 
@@ -52,4 +52,6 @@ import-sqlite 明确读取只读 SQLite，仅向已迁移 PG 导入四张采集�
 - SQLite 隔离闭环 1 项通过，独立本地演示通过。
 - 两份 Compose 静态校验、编译、单一迁移 head 检查通过。
 - 本轮项目 PG 升级及实际旧状态导入成功，四张采集表逐字段与原 SQLite 完全一致，Markdown 字节未变。
-- Docker daemon 未运行，新增 PG 隔离功能测试只完成收集校验，尚未执行；真实飞书需重启后再验收。
+- 新增 PG 隔离功能测试与其余 HTTP／PG 回归合计 8 项通过；真实飞书及正式部署挂载／网络仍需人工验收。
+
+子代理完整验证、测试边界及人工操作见[测试报告](测试报告.md)。

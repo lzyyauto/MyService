@@ -177,6 +177,8 @@ FastAPI 仅开放：
 - 功能测试会在一次性空 PostgreSQL 上先执行 `python -m app.db.migration_baseline`，再执行
   `alembic upgrade head` 和真实 HTTP 链路验证；
   这不等于已验证有历史数据的生产库升级／回退。生产升级前仍须备份并检查 `alembic current`。
+- 飞书 PG 改造已于 2026-10-03 由独立测试子代理验证：122 项单元、8 项完整一次性 PG／HTTP 功能测试通过；
+  测试栈无残留。具体边界与人工验收见 `docs/飞书状态库复用PostgreSQL/测试报告.md`。
 
 长期开发入口：
 
