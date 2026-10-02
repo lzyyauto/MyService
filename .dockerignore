@@ -6,6 +6,7 @@ __pycache__/
 venv/
 .env
 .env.*
+config/feishu.toml
 .dockerignore
 Dockerfile
 docker-compose.yml
@@ -22,3 +23,4 @@ temp/
 data/
 frontend/node_modules/
 frontend/dist/
+config/prompts/

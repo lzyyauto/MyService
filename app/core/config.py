@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from pydantic import PostgresDsn
+from pydantic import Field, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     FEISHU_APP_SECRET: Optional[str] = None
     FEISHU_BASE_URL: str = "https://open.feishu.cn"
     INSPIRATION_DOC_PATH: str = "data/inspirations.md"
+    FEISHU_CONFIG_PATH: Optional[str] = None
+    FEISHU_STATE_DATABASE_URL: Optional[str] = None
+    # 仅兼容已撤回的灵感 AI 配置；采集器和主应用均不得使用。
+    COLLECTION_AI_API_KEY: Optional[SecretStr] = Field(default=None, repr=False, exclude=True)
 
     # 已废弃：视频处理配置，仅供保留代码导入。
     FFMPEG_PATH: str = "ffmpeg"  # ffmpeg可执行文件路径
@@ -77,6 +81,7 @@ class Settings(BaseSettings):
         env_file = str(Path(__file__).parent.parent.parent / ".env")
         env_file_encoding = "utf-8"
         case_sensitive = True
+        hide_input_in_errors = True
 
         @classmethod
         def customise_sources(

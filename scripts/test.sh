@@ -31,6 +31,7 @@ run_unit_tests() {
     --cov=app.api.v1.endpoints.public_request_dump \
     --cov=app.core.security \
     --cov=app.services.inspiration \
+    --cov=app.services.feishu \
     --cov=app.services.notion \
     --cov=app.services.notion_ingest \
     --cov=app.services.bark \

@@ -35,7 +35,9 @@
 
 ### 💡 灵感采集
 - 通过飞书 WebSocket 长连接接收文本消息
-- 追加到本地 Markdown，并给已保存消息添加回执
+- 多机器人／群聊按 TOML 分流，追加完整时间与来源到自定义 Markdown，并给已保存消息添加回执
+- 来源 ID 查询、限时发现日志、持久化 SQLite 去重；删除文档后由新消息重新创建
+- 总结与 agent 编排后续独立设计，采集器只做消息保存和 OK 回执
 - 与 FastAPI 分进程运行，采集故障不影响睡眠 API
 
 ## 🛠 技术栈
@@ -206,7 +208,22 @@ uv lock
 
 历史 GTD、Telegram 下载和视频处理仅为数据兼容保留，未开放 API。
 
-飞书灵感采集不是 HTTP 接口。配置 `.env` 后单独启动 worker：
+新版飞书纯采集操作方式见[操作手册](docs/飞书采集职责简化/操作手册.md)。
+先运行无需 Docker／凭证的闭环演示，再配置真实服务：
+
+```bash
+uv run python scripts/feishu_local_demo.py
+# 复制并填写 config/feishu.toml；SQLite 状态库启动自动初始化
+uv run python -m app.feishu_cli validate
+uv run python -m app.feishu_cli collect
+# 另一个终端查看来源 ID 和采集状态
+uv run python -m app.feishu_cli sources
+uv run python -m app.feishu_cli status
+```
+
+配置模板位于 config/feishu.example.toml；设置 FEISHU_CONFIG_PATH=config/feishu.toml。
+Docker 只启用 inspiration profile，采集不依赖 PostgreSQL。它独立于 FastAPI，
+不提供灵感 HTTP 路由。以下为旧单文件兼容模式：
 
 ```env
 FEISHU_APP_ID=cli_xxx
@@ -309,8 +326,8 @@ FEISHU_APP_SECRET=xxx
 INSPIRATION_DOC_PATH=data/inspirations.md
 ```
 
-灵感采集设计与限制见
-[`docs/飞书灵感采集整合/README.md`](docs/飞书灵感采集整合/README.md)。
+新版设计与运行见[飞书采集职责简化](docs/飞书采集职责简化/README.md)；
+旧单文件兼容模式见[原整合记录](docs/飞书灵感采集整合/README.md)。
 
 ## 📄 许可证
 

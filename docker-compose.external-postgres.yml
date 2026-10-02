@@ -66,8 +66,12 @@ services:
       - .env
     environment:
       INSPIRATION_DOC_PATH: /app/data/inspirations.md
+      FEISHU_CONFIG_PATH: ${FEISHU_CONFIG_PATH:-}
     volumes:
       - ${MYSERVICE_DATA_DIR:-./data}:/app/data
+      - ${MYSERVICE_CONFIG_DIR:-./config}:/app/config:ro
+    logging:
+      driver: none
     restart: unless-stopped
     init: true
     healthcheck:

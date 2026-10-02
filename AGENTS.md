@@ -16,14 +16,14 @@
 - 接收 Notion 标准页面 JSON；映射保存业务类型、显示名称和说明，已映射运动数据写入
   `sport_record`；运动种类通过全局 `notion_select_option_mappings` 的选项 ID 映射为可读
   名称，未映射数据仍保存并同步。
-- 通过独立飞书 WebSocket worker 接收文本灵感，保存为 Markdown 并添加回执。
+- 通过独立飞书 WebSocket worker 接收多个应用的文本灵感，按 TOML 分流、持久化去重，保存 Markdown 并添加回执；仅做文本采集和落盘成功后的 OK 回执，不调用 AI、不定时总结。
 
 GTD、Telegram 下载、视频处理和相关 AI 能力已于 2026-07-19 废弃。代码、模型和
 历史迁移暂时保留用于兼容，但主应用不得导入、注册或调用这些功能。
 
 飞书灵感采集来自 `daily-claw`，属于新的有效功能，不等同于已废弃的 Telegram
-下载功能。原项目没有实现 AI 文档整理；后续实现前不得把现有废弃 `ai_client.py`
-当作灵感整理能力重新启用。
+下载功能。每日 AI 整理已于 2026-10-02 从当前功能撤回，后续 agent 另行设计。
+不得把现有废弃 `app/utils/ai_client.py` 重新启用。
 
 ## 技术栈
 
@@ -52,7 +52,8 @@ app/
 ├── schemas/              # 当前 Schema 及兼容保留 Schema
 ├── services/
 │   ├── bark.py           # 睡眠同步失败提醒；含少量废弃兼容方法
-│   ├── inspiration.py    # 飞书灵感解析、去重、落盘和回执
+│   ├── feishu/           # 多应用接入、配置、来源、持久化采集与基本回执
+│   ├── inspiration.py    # 旧单文件采集兼容入口
 │   ├── notion.py         # 睡眠 Notion 同步；含废弃 GTD 方法
 │   ├── notion_ingest.py  # 严格业务 mapper
 │   ├── telegram.py       # 已废弃
@@ -60,7 +61,8 @@ app/
 └── utils/
     └── ai_client.py      # 已废弃
 app/workers/
-├── feishu_inspiration.py # 飞书长连接独立进程入口
+├── feishu_inspiration.py # 兼容入口，配置 FEISHU_CONFIG_PATH 后转交新版
+├── feishu_gateway.py     # 多应用长连接采集角色
 └── notion_delivery.py    # Notion 持久化投递队列独立进程入口
 frontend/                 # 睡眠与运动看板，独立构建并由 Nginx 提供
 alembic/                  # 历史迁移，不得因功能废弃而改写
@@ -81,6 +83,11 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 运行飞书灵感采集 worker
 uv run python -m app.workers.feishu_inspiration
+# 新版：复制 config/feishu.example.toml 为 config/feishu.toml；本地 SQLite 状态自动初始化
+uv run python -m app.feishu_cli validate
+uv run python -m app.feishu_cli collect
+# 无 Docker、无真实凭证的隔离闭环演示
+uv run python scripts/feishu_local_demo.py
 
 # 运行 Notion 投递 worker
 uv run python -m app.workers.notion_delivery
@@ -158,7 +165,9 @@ FastAPI 仅开放：
 ## 测试规则
 
 - 单元测试位于 `tests/unit/`，不得访问网络、真实数据库或用户数据。
-- 功能测试位于 `tests/functional/`，只能使用 `docker-compose.functional.yml`
+- 飞书采集跨组件演示和专用功能测试使用临时 SQLite、本机 HTTP 替身，不创建生产业务表；
+  不属于单元测试，也不代表 PostgreSQL 生产验证。
+- 其他功能测试位于 `tests/functional/`，只能使用 `docker-compose.functional.yml`
   创建的一次性 PostgreSQL 和本地外部服务替身。
 - 默认测试不得连接真实飞书、Notion 或 Bark。
 - 统一入口是 `scripts/test.sh`；`unit` 是本地第一道验证，`functional` 验证真实
@@ -223,13 +232,28 @@ API、看板或 Notion 映射业务中使用或展示。
 - Bark：`BARK_BASE_URL`、`BARK_DEFAULT_DEVICE_KEY`
 - 飞书灵感：`FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_BASE_URL`、
   `INSPIRATION_DOC_PATH`
-- 日志与 Docker 持久化配置
+- 新版飞书：`FEISHU_CONFIG_PATH`、`FEISHU_STATE_DATABASE_URL`（可选 SQLite 覆盖）；
+  `config/feishu.toml` 与 `.env` 不纳入 Git，示例与提示词在 `config/`。
+- 日志与 Docker 持久化配置；飞书配置目录通过 `MYSERVICE_CONFIG_DIR` 挂载。
 
 GTD、Telegram 下载、视频和旧 AI 配置字段仅在 `Settings` 中兼容旧 `.env`，
 主应用不得读取。
 
-灵感文件默认为 `data/inspirations.md`，`data/` 不纳入 Git，部署时必须持久化和备份。
-完整决策见 `docs/飞书灵感采集整合/README.md`。
+旧单文件灵感默认为 `data/inspirations.md`；新版 Markdown 路径在 TOML 自定义。
+`data/` 不纳入 Git，部署时必须持久化和备份。采集内部 SQLite 默认 `data/feishu/state.sqlite3`，
+启动自动初始化采集表，不依赖业务 PostgreSQL、不读取 POSTGRES_*。历史飞书 Alembic 迁移和
+FeishuRun 模型只为兼容保留，不修改历史、不删表；FastAPI create_all 仍排除飞书表。
+TOML 热加载，失败保留有效版本；runtime、日志目录、.env、Python 代码变化需重启采集。
+默认接收群聊／私聊文本、不要求 @；落盘成功才加 OK 回执，回执失败重试不重新写入。
+删除 Markdown 不重放旧数据，新消息会重新创建。默认日志七天／每文件 10 MB／每角色 100 MB，
+Docker 采集使用 none 驱动，查询正式文件日志；来源 ID 用 CLI sources，限时发现用 discover。
+操作步骤、来源查询、扩展热加载和容器升级清单见 `docs/飞书采集职责简化/操作手册.md`，决定见该目录 README。
+Docker 只挂载 config→/app/config（只读）与 data→/app/data（可写），SQLite 和日志在 data 内；
+不能沿用开发机 /Users/... 状态库 URL。跨机器迁移须先清空待写入／回执积压、停采集并备份原文与状态库；
+数据库记录旧绝对目标路径，不自动重定位积压任务。同一机器人只能保留一个有效采集实例。
+`worker / process / retry` 和 AI 配置段已移除；`init-local` 仅保留兼容入口，启动本已自动初始化。
+CLI 状态库错误只输出 `collection_state_error` 等安全分类，不得输出 SQL、连接串、参数或原文。
+Settings 的 COLLECTION_AI_API_KEY 仅兼容旧 .env，隐藏值，不调用任何 AI 服务。
 
 ## 已知问题
 

@@ -40,3 +40,17 @@ def test_timestamp_is_converted_to_china_timezone() -> None:
     converted = to_cn_timezone(0)
 
     assert converted.isoformat() == "1970-01-01T08:00:00+08:00"
+
+
+def test_retired_collection_ai_key_is_accepted_but_hidden() -> None:
+    from app.core.config import Settings
+
+    settings = Settings(
+        _env_file=None,
+        APP_NAME="test", DEBUG=False, ENVIRONMENT="test",
+        POSTGRES_USER="test", POSTGRES_PASSWORD="placeholder", POSTGRES_DB="test",
+        LOG_LEVEL="INFO", LOG_FORMAT="plain", POSTGRES_DATA_DIR="unused",
+        COLLECTION_AI_API_KEY="retired-placeholder",
+    )
+    assert "COLLECTION_AI_API_KEY" not in settings.model_dump()
+    assert "retired-placeholder" not in repr(settings)

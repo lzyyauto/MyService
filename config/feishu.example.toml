@@ -1,0 +1,51 @@
+# 复制为 config/feishu.toml；此配置只负责飞书消息到 Markdown。
+version = 1
+
+[runtime]
+root_dir = ".." # 相对 TOML 所在目录；其余相对路径基于此根目录
+state_path = "data/feishu/state.sqlite3" # 内部来源／去重／写入状态，自动初始化
+database_url_env = "FEISHU_STATE_DATABASE_URL" # 可选 SQLite URL 覆盖；不读取 POSTGRES_*
+poll_seconds = 1
+retry_seconds = 30
+max_attempts = 3
+
+[observability]
+level = "INFO"
+console = false
+log_dir = "data/logs/feishu"
+retention_days = 7
+max_file_mb = 10
+max_total_mb = 100
+summary_interval_seconds = 300
+source_retention_days = 90
+max_sources = 10000
+
+[observability.discovery]
+enabled = false
+duration_seconds = 600
+
+[[apps]]
+id = "personal"
+app_id_env = "FEISHU_APP_ID"
+app_secret_env = "FEISHU_APP_SECRET"
+default_pipeline = "inspiration"
+base_url = "https://open.feishu.cn"
+
+# 新群指定文档目标；未匹配来源进入 default_pipeline。
+# [[routes]]
+# id = "project-group"
+# app = "personal"
+# chat_id = "oc_replace_from_sources"
+# pipeline = "project_notes"
+# require_at = false
+# allowed_sender_ids = []
+
+[[pipelines]]
+id = "inspiration"
+input_path = "data/my-inspiration/pending.md"
+# 按来源拆开：data/feishu/{app_id}/{chat_id}/messages.md
+# pipelines 只代表文档收集目标，不配置 AI、提示词、每日时间或结果投递。
+
+# [[pipelines]]
+# id = "project_notes"
+# input_path = "data/project-notes/messages.md"

@@ -102,7 +102,7 @@ class FeishuInspirationCollector:
             if message is None:
                 return False
             path = append_inspiration(message, self.target_path)
-            logger.info("灵感已写入 %s", path)
+            logger.debug("灵感已写入 %s", path)
             self.add_reaction(message.message_id)
             return True
         finally:

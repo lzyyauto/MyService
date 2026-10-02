@@ -6,6 +6,11 @@ import app.models  # noqa: F401, E402
 
 def test_all_models_are_registered() -> None:
     assert set(Base.metadata.tables) == {
+        "feishu_sources",
+        "feishu_streams",
+        "feishu_messages",
+        "feishu_runs",
+        "feishu_controls",
         "sport_record",
         "gtd_tasks",
         "notion_database_mappings",
